@@ -248,6 +248,11 @@
                 <artifactId>json-path</artifactId>
                 <version>${json-path.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.opentracing.contrib</groupId>
+                <artifactId>opentracing-spring-cloud-starter</artifactId>
+                <version>0.0.4</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
