@@ -24,14 +24,14 @@ import com.beust.jcommander.Parameter;
 import com.google.gson.Gson;
 import com.google.inject.*;
 import com.google.inject.util.Modules;
+import com.instana.opentracing.InstanaTracer;
+import io.opentracing.util.GlobalTracer;
+import io.opentracing.util.ThreadLocalActiveSpanSource;
 import org.apache.commons.io.FileUtils;
 import org.h2.util.StringUtils;
 import org.json.JSONException;
 import org.json.JSONWriter;
-import org.kairosdb.core.datastore.DatastoreQuery;
-import org.kairosdb.core.datastore.KairosDatastore;
-import org.kairosdb.core.datastore.QueryCallback;
-import org.kairosdb.core.datastore.QueryMetric;
+import org.kairosdb.core.datastore.*;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.exception.KairosDBException;
 import org.kairosdb.core.http.rest.json.DataPointsParser;
@@ -320,6 +320,7 @@ public class Main
 					}
 				}));
 
+				GlobalTracer.register(new InstanaTracer(new ThreadLocalActiveSpanSource()));
 				main.startServices();
 
 				logger.info("------------------------------------------");
