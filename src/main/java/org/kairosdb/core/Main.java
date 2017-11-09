@@ -24,6 +24,9 @@ import com.beust.jcommander.Parameter;
 import com.google.gson.Gson;
 import com.google.inject.*;
 import com.google.inject.util.Modules;
+import com.lightstep.tracer.shared.Options;
+import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
 import org.apache.commons.io.FileUtils;
 import org.h2.util.StringUtils;
 import org.json.JSONException;
@@ -46,6 +49,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.*;
+
 
 public class Main
 {
@@ -320,10 +324,20 @@ public class Main
 					}
 				}));
 
+
+				// OPENTRACING
+				Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
+						.withAccessToken("TODO: ACCESS-TOKEN")
+						.withComponentName("zmon-kairosdb")
+						.build();
+				Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
+
+				GlobalTracer.register(tracer);
+
 				main.startServices();
 
 				logger.info("------------------------------------------");
-				logger.info("     KairosDB service started");
+				logger.info("KairosDB service started - with OT support");
 				logger.info("------------------------------------------");
 
 				//main.runMissTest();

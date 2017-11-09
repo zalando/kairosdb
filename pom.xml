@@ -199,6 +199,29 @@
             <version>8.1.18.v20150929</version>
         </dependency>
 
+        <!-- OPENTTRACING-->
+        <dependency>
+            <groupId>io.opentracing.contrib</groupId>
+            <artifactId>opentracing-jaxrs2</artifactId>
+            <version>0.0.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lightstep.tracer</groupId>
+            <artifactId>lightstep-tracer-jre</artifactId>
+            <version>0.11.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>2.0.5.Final</version>
+        </dependency>
+        <!-- OPENTTRACING-->
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
