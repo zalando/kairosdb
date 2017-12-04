@@ -28,6 +28,9 @@ import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
+import com.lightstep.tracer.shared.Options;
+import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
 import org.apache.commons.io.FileUtils;
 import org.h2.util.StringUtils;
 import org.json.JSONException;
@@ -69,6 +72,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+
 
 public class Main
 {
@@ -345,10 +349,20 @@ public class Main
 					}
 				}));
 
+
+				// OPENTRACING
+				Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
+						.withAccessToken("TODO: ACCESS-TOKEN")
+						.withComponentName("zmon-kairosdb")
+						.build();
+				Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
+
+				GlobalTracer.register(tracer);
+
 				main.startServices();
 
 				logger.info("------------------------------------------");
-				logger.info("     KairosDB service started");
+				logger.info("KairosDB service started - with OT support");
 				logger.info("------------------------------------------");
 
 				//main.runMissTest();
