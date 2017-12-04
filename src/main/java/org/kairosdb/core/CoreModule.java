@@ -31,6 +31,7 @@ import org.kairosdb.core.groupby.*;
 import org.kairosdb.core.http.rest.json.QueryParser;
 import org.kairosdb.core.jobs.CacheFileCleaner;
 import org.kairosdb.core.scheduler.KairosDBScheduler;
+import org.kairosdb.tracing.LightstepConfiguration;
 import org.kairosdb.util.MemoryMonitor;
 import org.kairosdb.util.Util;
 
@@ -139,5 +140,7 @@ public class CoreModule extends AbstractModule
 
 		String hostIp = m_props.getProperty("kairosdb.host_ip");
 		bindConstant().annotatedWith(Names.named("HOST_IP")).to(hostIp != null ? hostIp: InetAddresses.toAddrString(Util.findPublicIp()));
+
+		bind(LightstepConfiguration.class).in(Singleton.class);
 	}
 }

@@ -39,6 +39,7 @@ import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.exception.KairosDBException;
 import org.kairosdb.core.http.rest.json.DataPointsParser;
 import org.kairosdb.core.http.rest.json.ValidationErrors;
+import org.kairosdb.tracing.LightstepConfiguration;
 import org.kairosdb.util.PluginClassLoader;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -49,6 +50,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.*;
+
+import static com.google.common.base.Strings.isNullOrEmpty;
 
 
 public class Main
@@ -193,7 +196,7 @@ public class Main
 						}
 
 						/*
-					    Check if they have a constructor that takes the properties
+						Check if they have a constructor that takes the properties
 						if not construct using the default constructor
 						 */
 						Module mod;
@@ -326,18 +329,36 @@ public class Main
 
 
 				// OPENTRACING
-				Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
-						.withAccessToken("TODO: ACCESS-TOKEN")
-						.withComponentName("zmon-kairosdb")
-						.build();
-				Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
+				LightstepConfiguration lightstepConfiguration = main.getInjector()
+						.getInstance(LightstepConfiguration.class);
 
-				GlobalTracer.register(tracer);
+				if (!isNullOrEmpty(lightstepConfiguration.getAccessToken())
+						&& !isNullOrEmpty(lightstepConfiguration.getCollectorHost()))
+				{
+
+					Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
+							.withAccessToken(lightstepConfiguration.getAccessToken())
+							.withCollectorHost(lightstepConfiguration.getCollectorHost())
+							.withCollectorPort(lightstepConfiguration.getCollectorPort())
+							.withCollectorProtocol(lightstepConfiguration.getCollectorProtocol())
+							.withComponentName("zmon-kairosdb")
+							.build();
+
+					Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
+
+					GlobalTracer.register(tracer);
+
+					logger.info("OpenTracing support enabled.");
+				}
+				else
+				{
+					logger.info("OpenTracing support disabled.");
+				}
 
 				main.startServices();
 
 				logger.info("------------------------------------------");
-				logger.info("KairosDB service started - with OT support");
+				logger.info("     KairosDB service started");
 				logger.info("------------------------------------------");
 
 				//main.runMissTest();
@@ -355,7 +376,6 @@ public class Main
 				logger.info("     KairosDB service is now down!");
 				logger.info("--------------------------------------");
 			}
-
 		}
 	}
 
