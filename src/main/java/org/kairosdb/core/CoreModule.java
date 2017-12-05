@@ -16,11 +16,16 @@
 
 package org.kairosdb.core;
 
+import ch.qos.logback.classic.Logger;
 import com.google.common.net.InetAddresses;
 import com.google.inject.AbstractModule;
+import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
+import com.lightstep.tracer.shared.Options;
+import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
 import org.kairosdb.core.aggregator.*;
 import org.kairosdb.core.datapoints.*;
 import org.kairosdb.core.datastore.GuiceQueryPluginFactory;
@@ -31,16 +36,23 @@ import org.kairosdb.core.groupby.*;
 import org.kairosdb.core.http.rest.json.QueryParser;
 import org.kairosdb.core.jobs.CacheFileCleaner;
 import org.kairosdb.core.scheduler.KairosDBScheduler;
-import org.kairosdb.tracing.LightstepConfiguration;
+import org.kairosdb.tracing.TracingConfiguration;
 import org.kairosdb.util.MemoryMonitor;
 import org.kairosdb.util.Util;
+import org.slf4j.LoggerFactory;
 
+import java.net.MalformedURLException;
 import java.util.List;
 import java.util.MissingResourceException;
 import java.util.Properties;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 public class CoreModule extends AbstractModule
 {
+	public static final Logger logger = (Logger) LoggerFactory.getLogger(CoreModule.class);
+
 	public static final String DATAPOINTS_FACTORY_LONG = "kairosdb.datapoints.factory.long";
 	public static final String DATAPOINTS_FACTORY_DOUBLE = "kairosdb.datapoints.factory.double";
 	private Properties m_props;
@@ -141,6 +153,38 @@ public class CoreModule extends AbstractModule
 		String hostIp = m_props.getProperty("kairosdb.host_ip");
 		bindConstant().annotatedWith(Names.named("HOST_IP")).to(hostIp != null ? hostIp: InetAddresses.toAddrString(Util.findPublicIp()));
 
-		bind(LightstepConfiguration.class).in(Singleton.class);
+		bind(TracingConfiguration.class).in(Singleton.class);
+	}
+
+	@SuppressWarnings("unused")
+	@Provides
+	public Tracer getTracer(TracingConfiguration tracerConfig) throws MalformedURLException {
+
+		checkNotNull(tracerConfig);
+
+		if (!GlobalTracer.isRegistered()
+ 					&& !isNullOrEmpty(tracerConfig.getAccessToken())
+					&& !isNullOrEmpty(tracerConfig.getCollectorHost())) {
+
+			synchronized (this) {
+				if (!GlobalTracer.isRegistered()) {
+					Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
+							.withAccessToken(tracerConfig.getAccessToken())
+							.withCollectorHost(tracerConfig.getCollectorHost())
+							.withCollectorPort(tracerConfig.getCollectorPort())
+							.withCollectorProtocol(tracerConfig.getCollectorProtocol())
+							.withComponentName("zmon-kairosdb")
+							.build();
+
+					logger.info("OpenTracing support enabled.");
+					Tracer globalTracer = new com.lightstep.tracer.jre.JRETracer(opts);
+					GlobalTracer.register(globalTracer);
+				} else {
+					logger.info("OpenTracing support disabled.");
+				}
+			}
+		}
+
+		return GlobalTracer.get();
 	}
 }

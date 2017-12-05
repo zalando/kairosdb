@@ -6,7 +6,7 @@ import com.google.inject.name.Named;
 /**
  * Created by abeverage on 12/4/17.
  */
-public class LightstepConfiguration {
+public class TracingConfiguration {
 
 	private static final String ACCESS_TOKEN = "tracing.lightstep.access_token";
 	private static final String COLLECTOR_HOST = "tracing.lightstep.collector_host";

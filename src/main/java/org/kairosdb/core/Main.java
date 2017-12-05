@@ -39,7 +39,7 @@ import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.exception.KairosDBException;
 import org.kairosdb.core.http.rest.json.DataPointsParser;
 import org.kairosdb.core.http.rest.json.ValidationErrors;
-import org.kairosdb.tracing.LightstepConfiguration;
+import org.kairosdb.tracing.TracingConfiguration;
 import org.kairosdb.util.PluginClassLoader;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -326,34 +326,6 @@ public class Main
 						}
 					}
 				}));
-
-
-				// OPENTRACING
-				LightstepConfiguration lightstepConfiguration = main.getInjector()
-						.getInstance(LightstepConfiguration.class);
-
-				if (!isNullOrEmpty(lightstepConfiguration.getAccessToken())
-						&& !isNullOrEmpty(lightstepConfiguration.getCollectorHost()))
-				{
-
-					Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
-							.withAccessToken(lightstepConfiguration.getAccessToken())
-							.withCollectorHost(lightstepConfiguration.getCollectorHost())
-							.withCollectorPort(lightstepConfiguration.getCollectorPort())
-							.withCollectorProtocol(lightstepConfiguration.getCollectorProtocol())
-							.withComponentName("zmon-kairosdb")
-							.build();
-
-					Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
-
-					GlobalTracer.register(tracer);
-
-					logger.info("OpenTracing support enabled.");
-				}
-				else
-				{
-					logger.info("OpenTracing support disabled.");
-				}
 
 				main.startServices();
 
