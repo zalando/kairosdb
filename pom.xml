@@ -20,7 +20,10 @@
         <assertj.version>2.3.0</assertj.version>
         <mockito.version>1.10.19</mockito.version>
         <json-path.version>2.0.0</json-path.version>
-	<skipTests>true</skipTests>
+        <skipTests>true</skipTests>
+        <jetty.alpnAgent.version>2.0.0</jetty.alpnAgent.version>
+        <jetty.alpnAgent.directory>${settings.localRepository}/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}</jetty.alpnAgent.directory>
+        <jetty.alpnAgent.name>jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.name>
         <argLine />
     </properties>
 
@@ -208,12 +211,22 @@
         <dependency>
             <groupId>com.lightstep.tracer</groupId>
             <artifactId>lightstep-tracer-jre</artifactId>
-            <version>0.11.1</version>
+            <version>0.12.15</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty</artifactId>
-            <version>1.4.0</version>
+            <version>1.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>4.1.14.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+            <version>4.1.14.Final</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -315,6 +328,7 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -325,6 +339,26 @@
                     <target>1.8</target>
                 </configuration>
             </plugin>
+
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.10</version>
+                <executions>
+                    <execution>
+                        <id>get-jetty-alpn-agent</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>get</goal>
+                        </goals>
+                        <configuration>
+                            <groupId>org.mortbay.jetty.alpn</groupId>
+                            <artifactId>jetty-alpn-agent</artifactId>
+                            <version>${jetty.alpnAgent.version}</version>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <!--
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
