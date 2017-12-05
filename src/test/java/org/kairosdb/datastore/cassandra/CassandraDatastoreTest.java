@@ -17,6 +17,7 @@ package org.kairosdb.datastore.cassandra;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import io.opentracing.util.GlobalTracer;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -182,7 +183,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper
 		CassandraConfiguration cassandraConfig = new CassandraConfiguration(1, MAX_ROW_READ_SIZE, MAX_ROW_READ_SIZE, MAX_ROW_READ_SIZE,
 				1000, 50000, cassandraHost, "kairosdb_test");
 
-		s_datastore = new CassandraDatastore("localhost", new CassandraClientImpl(cassandraConfig), cassandraConfig, dataPointFactory);
+		s_datastore = new CassandraDatastore("localhost", new CassandraClientImpl(cassandraConfig, GlobalTracer.get()), cassandraConfig, dataPointFactory);
 
 		System.out.println("Creating KairosDataStore");
 		DatastoreTestHelper.s_datastore = new KairosDatastore(s_datastore,
