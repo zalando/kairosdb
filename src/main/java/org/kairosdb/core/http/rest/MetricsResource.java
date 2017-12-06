@@ -230,7 +230,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Consumes("application/gzip")
 	@Path("/datapoints")
 	@Traced(operationName = "/datapoints")
-	public Response addGzip(InputStream gzip)
+	public Response addGzip(@Context HttpHeaders headers, InputStream gzip)
 	{
 		GZIPInputStream gzipInputStream;
 		try
@@ -242,15 +242,29 @@ public class MetricsResource implements KairosMetricReporter
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
-		return (add(gzipInputStream));
+		return (add(headers, gzipInputStream));
 	}
 
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints")
 	@Traced(operationName = "/datapoints")
-	public Response add(InputStream json)
+	public Response add(@Context HttpHeaders headers, InputStream json)
 	{
+		SpanContext spanContext = null;
+		if (m_tracer != null) {
+			spanContext = m_tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarriers(headers.getRequestHeaders()));
+		}
+
+		io.opentracing.Tracer.SpanBuilder buildSpan = m_tracer.buildSpan("/datapoints").withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
+
+		if (spanContext != null) {
+			logger.debug("Span Context Collected: " + spanContext.toString());
+			buildSpan.asChildOf(spanContext);
+		}
+
+		ActiveSpan activeSpan = buildSpan.startActive();
+
 		try
 		{
 			DataPointsParser parser = new DataPointsParser(datastore, new InputStreamReader(json, "UTF-8"),
@@ -296,6 +310,9 @@ public class MetricsResource implements KairosMetricReporter
 		{
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
+		}finally
+		{
+			activeSpan.deactivate();
 		}
 	}
 

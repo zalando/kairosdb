@@ -269,26 +269,6 @@ public class Main
 
 		final Main main = new Main(propertiesFile);
 
-			/*Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
-					.withAccessToken(lightstepConfiguration.getAccessToken())
-					.withCollectorHost(lightstepConfiguration.getCollectorHost())
-					.withCollectorPort(lightstepConfiguration.getCollectorPort())
-					.withCollectorProtocol(lightstepConfiguration.getCollectorProtocol())
-					.withComponentName("zmon-kairosdb")
-					.build();*/
-
-			Options opts = new com.lightstep.tracer.shared.Options.OptionsBuilder()
-					.withAccessToken(System.getenv("TRACING_LIGHTSTEP_ACCESS_TOKEN"))
-					.withCollectorHost(System.getenv("TRACING_LIGHTSTEP_COLLECTOR_HOST"))
-					.withCollectorPort(Integer.parseInt(System.getenv("TRACING_LIGHTSTEP_COLLECTOR_PORT")))
-					.withCollectorProtocol(System.getenv("TRACING_LIGHTSTEP_COLLECTOR_PROTOCOL"))
-					.withComponentName("zmon-kairosdb")
-					.build();
-
-			Tracer tracer = new com.lightstep.tracer.jre.JRETracer(opts);
-
-			GlobalTracer.register(tracer);
-
 		if (arguments.operationCommand.equals("export"))
 		{
 			if (!StringUtils.isNullOrEmpty(arguments.exportFile))
