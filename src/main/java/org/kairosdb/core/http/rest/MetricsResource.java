@@ -22,6 +22,7 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
 import com.google.inject.name.Named;
+import io.opentracing.Tracer;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
@@ -43,9 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -53,6 +52,15 @@ import java.util.zip.GZIPInputStream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static javax.ws.rs.core.Response.ResponseBuilder;
+
+//Opentracing
+import io.opentracing.ActiveSpan;
+import io.opentracing.SpanContext;
+import io.opentracing.contrib.jaxrs2.server.Traced;
+import io.opentracing.propagation.Format;
+import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
+import org.kairosdb.opentracing.HttpHeadersCarriers;
 
 enum NameType
 {
@@ -62,6 +70,7 @@ enum NameType
 }
 
 @Path("/api/v1")
+@Traced(operationName = "/api/v1")
 public class MetricsResource implements KairosMetricReporter
 {
 	public static final Logger logger = LoggerFactory.getLogger(MetricsResource.class);
@@ -92,9 +101,12 @@ public class MetricsResource implements KairosMetricReporter
 	@Named("HOSTNAME")
 	private String hostName = "localhost";
 
+	//Opentracing Tracer
+	io.opentracing.Tracer m_tracer;
+
 	@Inject
 	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
-			KairosDataPointFactory dataPointFactory)
+			KairosDataPointFactory dataPointFactory, Tracer tracer)
 	{
 		this.datastore = checkNotNull(datastore);
 		this.queryParser = checkNotNull(queryParser);
@@ -103,6 +115,9 @@ public class MetricsResource implements KairosMetricReporter
 
 		GsonBuilder builder = new GsonBuilder();
 		gson = builder.create();
+
+		//Get reference to the opentracing globaltracer
+		m_tracer = tracer;
 	}
 
 	private ResponseBuilder setHeaders(ResponseBuilder responseBuilder)
@@ -140,6 +155,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/metricnames")
+	@Traced(operationName = "/metricnames")
 	public Response corsPreflightMetricNames(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -150,6 +166,7 @@ public class MetricsResource implements KairosMetricReporter
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/metricnames")
+	@Traced(operationName = "/metricnames")
 	public Response getMetricNames()
 	{
 		return executeNameQuery(NameType.METRIC_NAMES);
@@ -158,6 +175,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/tagnames")
+	@Traced(operationName = "/tagnames")
 	public Response corsPreflightTagNames(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -168,6 +186,7 @@ public class MetricsResource implements KairosMetricReporter
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/tagnames")
+	@Traced(operationName = "/tagnames")
 	public Response getTagNames()
 	{
 		return executeNameQuery(NameType.TAG_KEYS);
@@ -177,6 +196,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/tagvalues")
+	@Traced(operationName = "/tagvalues")
 	public Response corsPreflightTagValues(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -187,6 +207,7 @@ public class MetricsResource implements KairosMetricReporter
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/tagvalues")
+	@Traced(operationName = "/tagvalues")
 	public Response getTagValues()
 	{
 		return
@@ -196,6 +217,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints")
+	@Traced(operationName = "/datapoints")
 	public Response corsPreflightDataPoints(@HeaderParam("Access-Control-Request-Headers") String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") String requestMethod)
 	{
@@ -207,7 +229,8 @@ public class MetricsResource implements KairosMetricReporter
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Consumes("application/gzip")
 	@Path("/datapoints")
-	public Response addGzip(InputStream gzip)
+	@Traced(operationName = "/datapoints")
+	public Response addGzip(@Context HttpHeaders headers, InputStream gzip)
 	{
 		GZIPInputStream gzipInputStream;
 		try
@@ -219,14 +242,29 @@ public class MetricsResource implements KairosMetricReporter
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
-		return (add(gzipInputStream));
+		return (add(headers, gzipInputStream));
 	}
 
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints")
-	public Response add(InputStream json)
+	@Traced(operationName = "/datapoints")
+	public Response add(@Context HttpHeaders headers, InputStream json)
 	{
+		SpanContext spanContext = null;
+		if (m_tracer != null) {
+			spanContext = m_tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarriers(headers.getRequestHeaders()));
+		}
+
+		io.opentracing.Tracer.SpanBuilder buildSpan = m_tracer.buildSpan("/datapoints").withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
+
+		if (spanContext != null) {
+			logger.debug("Span Context Collected: " + spanContext.toString());
+			buildSpan.asChildOf(spanContext);
+		}
+
+		ActiveSpan activeSpan = buildSpan.startActive();
+
 		try
 		{
 			DataPointsParser parser = new DataPointsParser(datastore, new InputStreamReader(json, "UTF-8"),
@@ -272,12 +310,16 @@ public class MetricsResource implements KairosMetricReporter
 		{
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
+		}finally
+		{
+			activeSpan.deactivate();
 		}
 	}
 
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/query/tags")
+	@Traced(operationName = "/datapoints/query/tags")
 	public Response corsPreflightQueryTags(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -288,6 +330,7 @@ public class MetricsResource implements KairosMetricReporter
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/query/tags")
+	@Traced(operationName = "/datapoints/query/tags")
 	public Response getMeta(String json)
 	{
 		checkNotNull(json);
@@ -372,6 +415,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
+	@Traced(operationName = QUERY_URL)
 	public Response corsPreflightQuery(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -382,18 +426,33 @@ public class MetricsResource implements KairosMetricReporter
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
-	public Response query(@QueryParam("query") String json) throws Exception
+	public Response query(@Context HttpHeaders headers, @QueryParam("query") String json) throws Exception
 	{
-		return get(json);
+		return get(headers, json);
 	}
 
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
-	public Response get(String json) throws Exception
+	@Traced(operationName = QUERY_URL)
+	public Response get(@Context HttpHeaders headers, String json) throws Exception
 	{
 		checkNotNull(json);
 		logger.debug(json);
+
+		SpanContext spanContext = null;
+		if (m_tracer != null) {
+			spanContext = m_tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarriers(headers.getRequestHeaders()));
+		}
+
+		io.opentracing.Tracer.SpanBuilder buildSpan = m_tracer.buildSpan(QUERY_URL + ".POST").withTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
+
+		if (spanContext != null) {
+			logger.debug("Span Context Collected: " + spanContext.toString());
+			buildSpan.asChildOf(spanContext);
+		}
+
+		ActiveSpan activeSpan = buildSpan.startActive();
 
 		try
 		{
@@ -475,12 +534,14 @@ public class MetricsResource implements KairosMetricReporter
 		finally
 		{
 			ThreadReporter.clear();
+			activeSpan.deactivate();
 		}
 	}
 
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/delete")
+	@Traced(operationName = "/datapoints/delete")
 	public Response corsPreflightDelete(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
@@ -491,6 +552,7 @@ public class MetricsResource implements KairosMetricReporter
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/delete")
+	@Traced(operationName = "/datapoints/delete")
 	public Response delete(String json) throws Exception
 	{
 		checkNotNull(json);
@@ -559,6 +621,7 @@ public class MetricsResource implements KairosMetricReporter
 	@OPTIONS
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/metric/{metricName}")
+	@Traced(operationName = "/metric/{metricName}")
 	public Response corsPreflightMetricDelete(@HeaderParam("Access-Control-Request-Headers") String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") String requestMethod)
 	{
@@ -569,6 +632,7 @@ public class MetricsResource implements KairosMetricReporter
 	@DELETE
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/metric/{metricName}")
+	@Traced(operationName = "/metric/{metricName}")
 	public Response metricDelete(@PathParam("metricName") String metricName) throws Exception
 	{
 		try
