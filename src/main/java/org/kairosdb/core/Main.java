@@ -28,6 +28,7 @@ import com.google.inject.Injector;
 import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
+import com.squarespace.jersey2.guice.JerseyGuiceUtils;
 import org.apache.commons.io.FileUtils;
 import org.h2.util.StringUtils;
 import org.json.JSONException;
@@ -240,6 +241,9 @@ public class Main
 		}
 
 		m_injector = Guice.createInjector(moduleList);
+
+		//  Only do this if we are a webapp:
+        JerseyGuiceUtils.install(m_injector);
 	}
 
 
