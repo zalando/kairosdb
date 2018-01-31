@@ -50,4 +50,16 @@ public class CheckCardinalityReporterTest {
         assertTrue(points.stream().anyMatch(item -> "cardinality.bar".equals(item.getName())));
         assertTrue(points.stream().anyMatch(item -> 100500L == item.getDataPoints().get(0).getLongValue()));
     }
+
+    @Test
+    public void testReporterIgnoresCardinalityChecks() throws Exception {
+        when(datastore.getWindowCardinality(anyString())).thenReturn(100500L);
+        when(datastore.getMetricNames()).thenReturn(Arrays.asList("foo", "cardinality.foo"));
+
+        final List<DataPointSet> points = reporter.getMetrics(0);
+
+        assertEquals(1, points.size());
+        assertTrue(points.stream().anyMatch(item -> "cardinality.foo".equals(item.getName())));
+        assertTrue(points.stream().anyMatch(item -> 100500L == item.getDataPoints().get(0).getLongValue()));
+    }
 }

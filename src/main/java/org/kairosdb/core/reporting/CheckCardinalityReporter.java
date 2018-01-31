@@ -35,6 +35,10 @@ public class CheckCardinalityReporter implements KairosMetricReporter {
         final ImmutableList.Builder<DataPointSet> builder = ImmutableList.builder();
         Iterable<String> metricNames = datastore.getMetricNames();
         for (String metricName : metricNames) {
+            if (metricName.startsWith(CARDINALITY_PREFIX)) {
+                continue;
+            }
+
             try {
                 long cardinality = datastore.getWindowCardinality(metricName);
                 final DataPointSet dataPointSet = createDataPointSet(now, metricName, cardinality);
