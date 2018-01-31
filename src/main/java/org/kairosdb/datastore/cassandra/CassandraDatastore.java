@@ -63,6 +63,7 @@ public class CassandraDatastore implements Datastore {
     public static final String QUERY_STRING_INDEX = "SELECT column1 FROM string_index WHERE key = ?";
 
     public static final String QUERY_ROW_KEY_INDEX = "SELECT column1 FROM row_key_index WHERE key = ? AND column1 >= ? and column1 <= ? ORDER BY column1 ASC LIMIT ?";
+    public static final String QUERY_ROW_KEY_INDEX_COUNT = "SELECT COUNT(1) FROM row_key_index WHERE key = ? AND column1 >= ? and column1 <= ?";
 
     public static final String QUERY_ROW_KEY_SPLIT_INDEX = "SELECT column1 FROM row_key_split_index WHERE metric_name = ? AND tag_name = ? and tag_value IN ? AND column1 >= ? and column1 <= ? LIMIT ?";
 
@@ -99,6 +100,7 @@ public class CassandraDatastore implements Datastore {
     private final PreparedStatement m_psInsertString;
     private final PreparedStatement m_psQueryStringIndex;
     private final PreparedStatement m_psQueryRowKeyIndex;
+    private final PreparedStatement m_psQueryRowKeyIndexCount;
     private final PreparedStatement m_psQueryRowKeySplitIndex;
     private final PreparedStatement m_psQueryDataPoints;
 
@@ -152,6 +154,7 @@ public class CassandraDatastore implements Datastore {
         m_psInsertString = m_session.prepare(STRING_INDEX_INSERT).setConsistencyLevel(cassandraConfiguration.getDataWriteLevelMeta());
         m_psQueryStringIndex = m_session.prepare(QUERY_STRING_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeyIndex = m_session.prepare(QUERY_ROW_KEY_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
+        m_psQueryRowKeyIndexCount = m_session.prepare(QUERY_ROW_KEY_INDEX_COUNT).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeySplitIndex = m_session.prepare(QUERY_ROW_KEY_SPLIT_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeySplitIndex2 = m_session.prepare(QUERY_ROW_KEY_SPLIT_INDEX_2).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryDataPoints = m_session.prepare(QUERY_DATA_POINTS).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
@@ -844,6 +847,27 @@ public class CassandraDatastore implements Datastore {
             ResultSet rs = m_session.execute(bs);
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
         }
+    }
+
+    public long getWindowCardinality(final String metricName) throws Exception {
+        final long beginRowTs = calculateRowTimeWrite(System.currentTimeMillis());
+        DataPointsRowKey timeKey = new DataPointsRowKey(metricName, beginRowTs, "");
+
+        ByteBuffer bMetricName;
+        try {
+            bMetricName = ByteBuffer.wrap(metricName.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
+        final BoundStatement bs = m_psQueryRowKeyIndexCount.bind();
+        bs.setBytes(0, bMetricName);
+        bs.setBytes(1, keySerializer.toByteBuffer(timeKey));
+        bs.setBytes(2, keySerializer.toByteBuffer(timeKey));
+
+        Row row = m_session.execute(bs).one();
+        return row.getLong(0);
     }
 
     // TODO remove when old getMatchingRowKeys is uncommented
