@@ -44,7 +44,7 @@ public class CheckCardinalityReporter implements KairosMetricReporter {
                 final DataPointSet dataPointSet = createDataPointSet(now, metricName, cardinality);
                 builder.add(dataPointSet);
             } catch (Throwable e) {
-                logger.error("failed reporting cardinality for check '{}': ({}){}", metricName,
+                logger.error("failed reporting cardinality for metric '{}': ({}){}", metricName,
                         e.getClass().getSimpleName(), e.getMessage());
             }
         }
