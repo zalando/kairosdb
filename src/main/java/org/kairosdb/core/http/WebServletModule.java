@@ -15,54 +15,40 @@
  */
 package org.kairosdb.core.http;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.google.inject.servlet.GuiceFilter;
-import com.sun.jersey.guice.JerseyServletModule;
-import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
-import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
-import org.eclipse.jetty.servlets.GzipFilter;
+import com.google.inject.servlet.ServletModule;
+import com.squarespace.jersey2.guice.JerseyGuiceModule;
+import org.kairosdb.core.health.HealthCheckResource;
+import org.kairosdb.core.health.HealthCheckService;
+import org.kairosdb.core.health.HealthCheckServiceImpl;
 import org.kairosdb.core.http.rest.MetricsResource;
 import org.kairosdb.core.http.rest.metrics.DefaultQueryMeasurementProvider;
 import org.kairosdb.core.http.rest.metrics.QueryMeasurementProvider;
 
-import javax.ws.rs.core.MediaType;
 import java.util.Properties;
 
-public class WebServletModule extends JerseyServletModule
+public class WebServletModule extends AbstractModule
 {
 	public WebServletModule(Properties props)
 	{
 	}
 
 	@Override
-	protected void configureServlets()
+	protected void configure()
 	{
-		binder().requireExplicitBindings();
-		bind(GuiceFilter.class);
-
-		//Bind web server
-		bind(WebServer.class);
-
-		bind(QueryMeasurementProvider.class).to(DefaultQueryMeasurementProvider.class).in(Singleton.class);
-
-		//Bind resource classes here
-		bind(MetricsResource.class).in(Scopes.SINGLETON);
-
-		bind(GuiceContainer.class);
-
-		ImmutableMap<String, String> params = new ImmutableMap.Builder<String, String>()
-				.put("mimeTypes", MediaType.APPLICATION_JSON)
-				.put("methods", "GET,POST")
-				.build();
-		bind(GzipFilter.class).in(Scopes.SINGLETON);
-		filter("/*").through(GzipFilter.class, params);
-
-		// hook Jackson into Jersey as the POJO <-> JSON mapper
-		bind(JacksonJsonProvider.class).in(Scopes.SINGLETON);
-		serve("/*").with(GuiceContainer.class);
-
-
+	    install(new JerseyGuiceModule("__HK2_Generated_0"));
+        install(new ServletModule() {
+            @Override
+            protected void configureServlets() {
+                binder().requireExplicitBindings();
+                bind(WebServer.class);
+                bind(QueryMeasurementProvider.class).to(DefaultQueryMeasurementProvider.class).in(Singleton.class);
+                bind(MetricsResource.class).in(Scopes.SINGLETON);
+                bind(HealthCheckService.class).to(HealthCheckServiceImpl.class).in(javax.inject.Singleton.class);
+                bind(HealthCheckResource.class).in(Scopes.SINGLETON);
+            }
+        });
 	}
 }

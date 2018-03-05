@@ -17,36 +17,49 @@
 package org.kairosdb.core.http;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.eclipse.jetty.http.HttpVersion.HTTP_1_1;
 import static org.kairosdb.util.Preconditions.checkNotNullOrEmpty;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Collections;
+import java.util.regex.Pattern;
 
-import org.eclipse.jetty.security.ConstraintMapping;
-import org.eclipse.jetty.security.ConstraintSecurityHandler;
-import org.eclipse.jetty.security.HashLoginService;
-import org.eclipse.jetty.security.SecurityHandler;
+import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
+import io.opentracing.contrib.web.servlet.filter.ServletFilterSpanDecorator;
+import io.opentracing.contrib.web.servlet.filter.TracingFilter;
+import io.opentracing.util.GlobalTracer;
+import org.eclipse.jetty.security.*;
 import org.eclipse.jetty.security.authentication.BasicAuthenticator;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.SslConnectionFactory;
 import org.eclipse.jetty.server.handler.DefaultHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.server.ssl.SslSelectChannelConnector;
-import org.eclipse.jetty.servlet.DefaultServlet;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.security.Constraint;
 import org.eclipse.jetty.util.security.Credential;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
+import org.glassfish.jersey.server.ResourceConfig;
+import org.glassfish.jersey.servlet.ServletContainer;
 import org.kairosdb.core.KairosDBService;
 import org.kairosdb.core.exception.KairosDBException;
+import org.kairosdb.core.health.HealthCheckResource;
+import org.kairosdb.core.http.rest.MetricsResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.google.inject.servlet.GuiceFilter;
+
+import javax.ws.rs.core.MediaType;
 
 
 public class WebServer implements KairosDBService
@@ -75,7 +88,6 @@ public class WebServer implements KairosDBService
 	private String[] m_protocols;
 	private String m_keyStorePath;
 	private String m_keyStorePassword;
-
 
 	public WebServer(int port, String webRoot)
 			throws UnknownHostException
@@ -132,6 +144,14 @@ public class WebServer implements KairosDBService
 	{
 		try
 		{
+            ResourceConfig config = new ResourceConfig();
+            config.register(MetricsResource.class);
+            config.register(JacksonJsonProvider.class);
+            config.register(HealthCheckResource.class);
+
+            ServletContainer container = new ServletContainer(config);
+            ServletHolder servletHolder = new ServletHolder(container);
+
 			if (m_port > 0)
 				m_server = new Server(new InetSocketAddress(m_address, m_port));
 			else
@@ -150,13 +170,14 @@ public class WebServer implements KairosDBService
 					sslContextFactory.setIncludeProtocols(m_protocols);
 
 				sslContextFactory.setKeyStorePassword(m_keyStorePassword);
-				SslSelectChannelConnector selectChannelConnector = new SslSelectChannelConnector(sslContextFactory);
-				selectChannelConnector.setPort(m_sslPort);
-				m_server.addConnector(selectChannelConnector);
+
+				ServerConnector sslConnector = new ServerConnector(m_server,
+				        new SslConnectionFactory(sslContextFactory, HTTP_1_1.asString()));
+                sslConnector.setPort(m_sslPort);
+                m_server.addConnector(sslConnector);
 			}
 
-			ServletContextHandler servletContextHandler =
-					new ServletContextHandler();
+			ServletContextHandler servletContextHandler = new ServletContextHandler();
 
 			//Turn on basic auth if the user was specified
 			if (m_authUser != null)
@@ -165,19 +186,35 @@ public class WebServer implements KairosDBService
 				servletContextHandler.setContextPath("/");
 			}
 
-			servletContextHandler.addFilter(GuiceFilter.class, "/api/*", null);
-			servletContextHandler.addServlet(DefaultServlet.class, "/api/*");
+            FilterHolder guiceHolder = new FilterHolder(GuiceFilter.class);
+            servletContextHandler.addFilter(guiceHolder, "/*", null);//EnumSet.allOf(DispatcherType.class));
+
+            TracingFilter filter = new TracingFilter(GlobalTracer.get(),
+                Collections.singletonList(ServletFilterSpanDecorator.STANDARD_TAGS),
+                        Pattern.compile(
+                                "/api/v1/health/check|/api-docs.*|/autoconfig|/configprops|/dump|/health|/info|/metrics.*|" +
+                                        "/mappings|/swagger.*|.*\\.png|.*\\.css|.*\\.js|.*\\.html|/favicon.ico|/hystrix.stream"));
+
+            FilterHolder tracerHolder = new FilterHolder(filter);
+            servletContextHandler.addFilter(tracerHolder, "/*", null);//EnumSet.allOf(DispatcherType.class));
+
+            GzipHandler gzipHander = new GzipHandler();
+            gzipHander.addIncludedMethods("GET", "POST");
+            gzipHander.addIncludedMimeTypes(MediaType.APPLICATION_JSON);
+            gzipHander.addIncludedPaths();
 
 			ResourceHandler resourceHandler = new ResourceHandler();
 			resourceHandler.setDirectoriesListed(true);
 			resourceHandler.setWelcomeFiles(new String[]{"index.html"});
 			resourceHandler.setResourceBase(m_webRoot);
-			resourceHandler.setAliases(true);
+			//resourceHandler.setAliases(true);
 
 			HandlerList handlers = new HandlerList();
-			handlers.setHandlers(new Handler[]{servletContextHandler, resourceHandler, new DefaultHandler()});
-			m_server.setHandler(handlers);
+			handlers.setHandlers(new Handler[]{ servletContextHandler, resourceHandler, new DefaultHandler()});
 
+            servletContextHandler.addServlet(servletHolder, "/*");
+
+            m_server.setHandler(handlers);
 			m_server.start();
 		}
 		catch (Exception e)
@@ -214,9 +251,10 @@ public class WebServer implements KairosDBService
 
 	private static SecurityHandler basicAuth(String username, String password, String realm)
 	{
-
 		HashLoginService l = new HashLoginService();
-		l.putUser(username, Credential.getCredential(password), new String[]{"user"});
+		UserStore userStore = new UserStore();
+		userStore.addUser(username, Credential.getCredential(password), new String[]{"user"});
+		l.setUserStore(userStore);
 		l.setName(realm);
 
 		Constraint constraint = new Constraint();
@@ -235,6 +273,5 @@ public class WebServer implements KairosDBService
 		csh.setLoginService(l);
 
 		return csh;
-
 	}
 }
