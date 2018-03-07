@@ -11,6 +11,4 @@ COPY logback.xml /app/conf/logging
 COPY conf/kairosdb.properties /app/conf/kairosdb.properties
 COPY conf/Tracer.properties /app/conf/Tracer.properties
 
-COPY target/scm-source.json /
-
 CMD ["/app/bin/kairosdb.sh", "run"]

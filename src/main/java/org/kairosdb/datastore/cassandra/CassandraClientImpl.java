@@ -9,6 +9,7 @@ import com.datastax.driver.core.policies.EC2AwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.inject.Inject;
+import io.opentracing.Tracer;
 import io.opentracing.contrib.cassandra.TracingCluster;
 import io.opentracing.util.GlobalTracer;
 import org.kairosdb.core.Main;
@@ -23,6 +24,9 @@ public class CassandraClientImpl implements CassandraClient
 
 	private final Cluster m_cluster;
 	private String m_keyspace;
+
+	@Inject
+	private Tracer tracer;
 
 	@Inject
 	public CassandraClientImpl(CassandraConfiguration config)
@@ -49,7 +53,7 @@ public class CassandraClientImpl implements CassandraClient
 			builder.withCredentials(user, password);
 		}
 
-		logger.info("Tracer Debugging ***" + GlobalTracer.get().toString());
+		logger.info("Tracer Debugging ***" + tracer);
 		m_cluster = new TracingCluster(builder, GlobalTracer.get());
 		m_keyspace = config.getKeyspaceName();
 	}
