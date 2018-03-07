@@ -20,7 +20,7 @@
         <assertj.version>2.3.0</assertj.version>
         <mockito.version>1.10.19</mockito.version>
         <json-path.version>2.0.0</json-path.version>
-        <lightstep.version>14.1</lightstep.version>
+        <lightstep.tracer.version>14.1</lightstep.tracer.version>
 	<skipTests>true</skipTests>
         <argLine />
     </properties>
@@ -266,22 +266,22 @@
         <dependency>
             <groupId>com.lightstep.tracer</groupId>
             <artifactId>java-common</artifactId>
-            <version>${lightstep.version}</version>
+            <version>0.14.1</version>
         </dependency>
         <dependency>
             <groupId>com.lightstep.tracer</groupId>
             <artifactId>tracer-okhttp</artifactId>
-            <version>${lightstep.version}</version>
+            <version>0.14.1</version>
         </dependency>
         <dependency>
             <groupId>com.lightstep.tracer</groupId>
             <artifactId>lightstep-tracer-jre</artifactId>
-            <version>${lightstep.tracer.version}</version>
+            <version>0.14.1</version>
         </dependency>
         <dependency>
             <groupId>io.opentracing</groupId>
             <artifactId>opentracing-api</artifactId>
-            <version>${io.opentracing.version}</version>
+            <version>0.31.0</version>
         </dependency>
     </dependencies>
 
