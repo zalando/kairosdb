@@ -26,10 +26,7 @@ public class CassandraClientImpl implements CassandraClient
 	private String m_keyspace;
 
 	@Inject
-	private Tracer tracer;
-
-	@Inject
-	public CassandraClientImpl(CassandraConfiguration config)
+	public CassandraClientImpl(CassandraConfiguration config, Tracer tracer)
 	{
 		final Cluster.Builder builder = new Cluster.Builder();
 		if(config.getAddressTranslator().equals(CassandraConfiguration.ADDRESS_TRANSLATOR_TYPE.EC2)) {
