@@ -17,18 +17,15 @@ package org.kairosdb.core.http;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Scopes;
+import com.google.inject.Singleton;
 import com.google.inject.servlet.GuiceFilter;
-import com.google.inject.servlet.ServletModule;
-import com.google.inject.multibindings.Multibinder;
-import com.sun.jersey.api.container.filter.GZIPContentEncodingFilter;
 import com.sun.jersey.guice.JerseyServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
-import com.sun.jersey.spi.container.ContainerRequestFilter;
-import com.sun.jersey.spi.container.ContainerResponseFilter;
 import org.codehaus.jackson.jaxrs.JacksonJsonProvider;
-import org.eclipse.jetty.server.handler.GzipHandler;
 import org.eclipse.jetty.servlets.GzipFilter;
 import org.kairosdb.core.http.rest.MetricsResource;
+import org.kairosdb.core.http.rest.metrics.DefaultQueryMeasurementProvider;
+import org.kairosdb.core.http.rest.metrics.QueryMeasurementProvider;
 
 import javax.ws.rs.core.MediaType;
 import java.util.Properties;
@@ -48,6 +45,8 @@ public class WebServletModule extends JerseyServletModule
 		//Bind web server
 		bind(WebServer.class);
 
+		bind(QueryMeasurementProvider.class).to(DefaultQueryMeasurementProvider.class).in(Singleton.class);
+
 		//Bind resource classes here
 		bind(MetricsResource.class).in(Scopes.SINGLETON);
 
@@ -59,9 +58,6 @@ public class WebServletModule extends JerseyServletModule
 				.build();
 		bind(GzipFilter.class).in(Scopes.SINGLETON);
 		filter("/*").through(GzipFilter.class, params);
-
-		bind(LoggingFilter.class).in(Scopes.SINGLETON);
-		filter("/*").through(LoggingFilter.class);
 
 		// hook Jackson into Jersey as the POJO <-> JSON mapper
 		bind(JacksonJsonProvider.class).in(Scopes.SINGLETON);

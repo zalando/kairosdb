@@ -37,8 +37,10 @@ import org.kairosdb.core.formatter.FormatterException;
 import org.kairosdb.core.formatter.JsonFormatter;
 import org.kairosdb.core.formatter.JsonResponse;
 import org.kairosdb.core.http.rest.json.*;
+import org.kairosdb.core.http.rest.metrics.QueryMeasurementProvider;
 import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.core.reporting.ThreadReporter;
+import org.kairosdb.datastore.cassandra.MaxRowKeysForQueryExceededException;
 import org.kairosdb.util.MemoryMonitorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,12 +96,16 @@ public class MetricsResource implements KairosMetricReporter
 	@Named("HOSTNAME")
 	private String hostName = "localhost";
 
+
+	private QueryMeasurementProvider queryMeasurementProvider;
+
 	@Inject
 	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
-			KairosDataPointFactory dataPointFactory)
+			KairosDataPointFactory dataPointFactory, QueryMeasurementProvider queryMeasurementProvider)
 	{
 		this.datastore = checkNotNull(datastore);
 		this.queryParser = checkNotNull(queryParser);
+		this.queryMeasurementProvider = checkNotNull(queryMeasurementProvider);
 		m_kairosDataPointFactory = dataPointFactory;
 		formatters.put("json", new JsonFormatter());
 
@@ -191,7 +197,8 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/tagvalues")
 	public Response getTagValues()
 	{
-		return executeNameQuery(NameType.TAG_VALUES);
+		return
+				executeNameQuery(NameType.TAG_VALUES);
 	}
 
 	@OPTIONS
@@ -399,9 +406,6 @@ public class MetricsResource implements KairosMetricReporter
 		checkNotNull(json);
 		logger.debug(json);
 
-		ThreadReporter.setReportTime(System.currentTimeMillis());
-		ThreadReporter.addTag("host", hostName);
-
 		try
 		{
 			File respFile = File.createTempFile("kairos", ".json", new File(datastore.getCacheDir()));
@@ -413,23 +417,24 @@ public class MetricsResource implements KairosMetricReporter
 
 			List<QueryMetric> queries = queryParser.parseQueryMetric(json);
 
-			int queryCount = 0;
 			for (QueryMetric query : queries)
 			{
-				queryCount++;
+				queryMeasurementProvider.measureSpanForMetric(query);
+				queryMeasurementProvider.measureDistanceForMetric(query);
 
 				DatastoreQuery dq = datastore.createQuery(query);
-				long startQuery = System.currentTimeMillis();
-
-				try
-				{
+				try {
 					List<DataPointGroup> results = dq.execute();
 					jsonResponse.formatQuery(results, query.isExcludeTags(), dq.getSampleSize());
-
-					// ThreadReporter.addDataPoint(QUERY_TIME, System.currentTimeMillis() - startQuery);
+				} catch (Throwable e) {
+					queryMeasurementProvider.measureSpanError(query);
+					queryMeasurementProvider.measureDistanceError(query);
+					throw e;
 				}
 				finally
 				{
+					queryMeasurementProvider.measureSpanSuccess(query);
+					queryMeasurementProvider.measureDistanceSuccess(query);
 					dq.close();
 				}
 			}
@@ -437,13 +442,6 @@ public class MetricsResource implements KairosMetricReporter
 			jsonResponse.end();
 			writer.flush();
 			writer.close();
-
-			ThreadReporter.clearTags();
-			ThreadReporter.addTag("host", hostName);
-			ThreadReporter.addTag("request", QUERY_URL);
-			ThreadReporter.addDataPoint(REQUEST_TIME, System.currentTimeMillis() - ThreadReporter.getReportTime());
-
-			ThreadReporter.submitData(m_longDataPointFactory, datastore);
 
 			ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 					new FileStreamingOutput(respFile));
@@ -465,6 +463,11 @@ public class MetricsResource implements KairosMetricReporter
 		{
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addErrors(e.getErrorMessages()).build();
+		}
+		catch (MaxRowKeysForQueryExceededException e) {
+			logger.error("Query failed with too many rows", e);
+			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
+			return builder.addError(e.getMessage()).build();
 		}
 		catch (MemoryMonitorException e)
 		{

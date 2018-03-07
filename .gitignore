@@ -25,3 +25,5 @@ target
 .settings
 bin
 log
+
+scm-source.json

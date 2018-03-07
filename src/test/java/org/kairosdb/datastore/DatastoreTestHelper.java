@@ -20,11 +20,8 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.TreeMultimap;
-import junit.framework.TestCase;
-import org.hamcrest.CoreMatchers;
+import org.junit.Ignore;
 import org.junit.Test;
-import org.kairosdb.core.DataPoint;
-import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.datapoints.LongDataPoint;
 import org.kairosdb.core.datastore.DataPointGroup;
 import org.kairosdb.core.datastore.DatastoreQuery;
@@ -33,10 +30,13 @@ import org.kairosdb.core.datastore.QueryMetric;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.groupby.TagGroupBy;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertTrue;
 import static junit.framework.TestCase.assertEquals;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -611,7 +611,8 @@ public abstract class DatastoreTestHelper
 			dq.close();
 		}
 	}
-	
+
+	@Ignore
 	@Test
 	public void test_queryNegativeTime() throws DatastoreException
 	{
@@ -682,6 +683,7 @@ public abstract class DatastoreTestHelper
 		}
 	}
 
+	@Ignore
 	@Test
 	public void test_notReturningTagsForEmptyData() throws DatastoreException, InterruptedException
 	{
