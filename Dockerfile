@@ -6,8 +6,9 @@ RUN mkdir -p /app/conf/logging
 WORKDIR /app
 
 ADD target/kairosdb-1.3-SNAPSHOT-distribution.tar.gz /app/
-
+ADD private-libs/tracing-lightstep-guice-starter-*.jar /app/lib/
 COPY logback.xml /app/conf/logging
 COPY conf/kairosdb.properties /app/conf/kairosdb.properties
+COPY conf/Tracer.properties /app/conf/Tracer.properties
 
 CMD ["/app/bin/kairosdb.sh", "run"]
