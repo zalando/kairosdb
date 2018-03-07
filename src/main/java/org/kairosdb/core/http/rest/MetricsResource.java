@@ -23,6 +23,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
 import com.google.inject.name.Named;
 import io.opentracing.Span;
+import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
@@ -93,6 +94,10 @@ public class MetricsResource implements KairosMetricReporter
 	@Inject
 	@Named("HOSTNAME")
 	private String hostName = "localhost";
+
+	@Inject
+	private Tracer tracer;
+
 
 	@Inject
 	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
@@ -394,7 +399,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response get(String json) throws Exception
 	{
 
-		Span span = GlobalTracer.get().buildSpan("Datapoint/Query").start();
+		Span span = tracer.buildSpan("Datapoint/Query").start();
 		logger.info("Tracer Debugging *** : Started Span Datapoints/Query");
 		checkNotNull(json);
 		logger.debug(json);
