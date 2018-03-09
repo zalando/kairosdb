@@ -21,6 +21,9 @@ import com.google.common.collect.MultimapBuilder;
 import com.google.common.collect.SetMultimap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LegacyDataPointFactory;
@@ -149,6 +152,9 @@ public class CassandraDatastore implements Datastore {
     private CassandraConfiguration m_cassandraConfiguration;
 
     @Inject
+    private Tracer tracer;
+
+    @Inject
     private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
 
     @Inject
@@ -254,6 +260,12 @@ public class CassandraDatastore implements Datastore {
                              ImmutableSortedMap<String, String> tags,
                              DataPoint dataPoint,
                              int ttl) throws DatastoreException {
+
+        tracer.scopeManager().active().span();
+
+        Tracer.SpanBuilder spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData").asChildOf(tracer.scopeManager().active().span());
+        Span span = spanBuild.start();
+        span.setTag("metricName",metricName).log(tags);
         try {
             DataPointsRowKey rowKey = null;
             //time the data is written.
@@ -375,7 +387,10 @@ public class CassandraDatastore implements Datastore {
             boundStatement.setInt(3, ttl);
             m_session.executeAsync(boundStatement);
         } catch (Exception e) {
+            span.log(e.toString());
             throw new DatastoreException(e);
+        }finally {
+            span.finish();
         }
     }
 
@@ -436,6 +451,11 @@ public class CassandraDatastore implements Datastore {
 
     private void queryWithRowKeys(DatastoreMetricQuery query,
                                   QueryCallback queryCallback, Collection<DataPointsRowKey> rowKeys) {
+
+        Tracer.SpanBuilder spanBuild = tracer.buildSpan("queryWithRowKeys").withTag("Name", "queryDatabase").asChildOf(tracer.scopeManager().active().span());
+        Span span = spanBuild.start();
+        span.setTag("Query",query.toString());
+
         long startTime = System.currentTimeMillis();
         long currentTimeTier = 0L;
         String currentType = null;
@@ -495,8 +515,12 @@ public class CassandraDatastore implements Datastore {
 
             queryCallback.endDataPoints();
         } catch (IOException e) {
+            span.log(e.getMessage());
             e.printStackTrace();
+        }finally {
+            span.finish();
         }
+        span.finish();
     }
 
     @Override

@@ -22,6 +22,9 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
 import com.google.inject.name.Named;
+import io.opentracing.*;
+import io.opentracing.propagation.Format;
+import io.opentracing.tag.Tags;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
@@ -35,6 +38,7 @@ import org.kairosdb.core.formatter.FormatterException;
 import org.kairosdb.core.formatter.JsonFormatter;
 import org.kairosdb.core.formatter.JsonResponse;
 import org.kairosdb.core.http.rest.json.*;
+import org.kairosdb.core.opentracing.HttpHeadersCarrier;
 import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.core.reporting.ThreadReporter;
 import org.kairosdb.util.MemoryMonitorException;
@@ -43,9 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
+import javax.ws.rs.core.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -84,6 +86,9 @@ public class MetricsResource implements KairosMetricReporter
 	private final AtomicInteger m_ingestTime = new AtomicInteger();
 
 	private final KairosDataPointFactory m_kairosDataPointFactory;
+
+	@com.google.inject.Inject
+	private Tracer tracer;
 
 	@Inject
 	private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
@@ -206,7 +211,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Consumes("application/gzip")
 	@Path("/datapoints")
-	public Response addGzip(InputStream gzip)
+	public Response addGzip(@Context HttpHeaders httpHeaders, InputStream gzip)
 	{
 		GZIPInputStream gzipInputStream;
 		try
@@ -218,14 +223,24 @@ public class MetricsResource implements KairosMetricReporter
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
-		return (add(gzipInputStream));
+		return (add(httpHeaders, gzipInputStream));
 	}
 
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints")
-	public Response add(InputStream json)
+	public Response add(@Context HttpHeaders httpHeaders, InputStream json)
 	{
+		ScopeManager scopeManager = tracer.scopeManager();
+		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+		Tracer.SpanBuilder spanBuild = tracer.buildSpan("/datapoints").withTag("Name","/datapoints").withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+		if (spanContext != null)
+			spanBuild.asChildOf(spanContext);
+
+		Span span = spanBuild.start();
+		Scope scope = scopeManager.activate(span, true);
+		span.log(json.toString());
+
 		try
 		{
 			DataPointsParser parser = new DataPointsParser(datastore, new InputStreamReader(json, "UTF-8"),
@@ -249,28 +264,35 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (JsonIOException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (JsonSyntaxException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (MalformedJsonException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (Exception e)
 		{
+			span.log(e.getMessage());
 			logger.error("Failed to add metric.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
+		}finally {
+			scope.close();
 		}
 	}
 
@@ -287,10 +309,20 @@ public class MetricsResource implements KairosMetricReporter
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/query/tags")
-	public Response getMeta(String json)
+	public Response getMeta(@Context HttpHeaders httpHeaders, String json)
 	{
 		checkNotNull(json);
 		logger.debug(json);
+
+		ScopeManager scopeManager = tracer.scopeManager();
+		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+		Tracer.SpanBuilder spanBuild = tracer.buildSpan("/datapoints").withTag("Name","/datapoints").withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+		if (spanContext != null)
+			spanBuild.asChildOf(spanContext);
+
+		Span span = spanBuild.start();
+		Scope scope = scopeManager.activate(span, true);
+		span.log(json.toString());
 
 		try
 		{
@@ -332,34 +364,42 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (JsonSyntaxException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (QueryException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (BeanValidationException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addErrors(e.getErrorMessages()).build();
 		}
 		catch (MemoryMonitorException e)
 		{
+			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			System.gc();
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (Exception e)
 		{
+			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
+		}finally {
+			scope.close();
 		}
 	}
 
@@ -381,18 +421,28 @@ public class MetricsResource implements KairosMetricReporter
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
-	public Response query(@QueryParam("query") String json) throws Exception
+	public Response query(@Context HttpHeaders httpHeaders, @QueryParam("query") String json) throws Exception
 	{
-		return get(json);
+		return get(httpHeaders, json);
 	}
 
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
-	public Response get(String json) throws Exception
+	public Response get(@Context HttpHeaders httpHeaders, String json) throws Exception
 	{
 		checkNotNull(json);
 		logger.debug(json);
+
+		ScopeManager scopeManager = tracer.scopeManager();
+		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+		Tracer.SpanBuilder spanBuild = tracer.buildSpan(QUERY_URL).withTag("Name",QUERY_URL).withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+		if (spanContext != null)
+			spanBuild.asChildOf(spanContext);
+
+		Span span = spanBuild.start();
+		Scope scope = scopeManager.activate(span, true);
+		span.log(json.toString());
 
 		ThreadReporter.setReportTime(System.currentTimeMillis());
 		ThreadReporter.addTag("host", hostName);
@@ -486,6 +536,8 @@ public class MetricsResource implements KairosMetricReporter
 		finally
 		{
 			ThreadReporter.clear();
+			//span.finish();
+			scope.close();
 		}
 	}
 
@@ -502,10 +554,20 @@ public class MetricsResource implements KairosMetricReporter
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("/datapoints/delete")
-	public Response delete(String json) throws Exception
+	public Response delete(@Context HttpHeaders httpHeaders, String json) throws Exception
 	{
 		checkNotNull(json);
 		logger.debug(json);
+
+		ScopeManager scopeManager = tracer.scopeManager();
+		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+		Tracer.SpanBuilder spanBuild = tracer.buildSpan("/datapoints/delete").withTag("Name","/datapoints/delete").withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+		if (spanContext != null)
+			spanBuild.asChildOf(spanContext);
+
+		Span span = spanBuild.start();
+		Scope scope = scopeManager.activate(span, true);
+		span.log(json.toString());
 
 		try
 		{
@@ -520,34 +582,43 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (JsonSyntaxException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (QueryException e)
 		{
+			span.log(e.getMessage());
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (BeanValidationException e)
 		{
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addErrors(e.getErrorMessages()).build();
 		}
 		catch (MemoryMonitorException e)
 		{
+			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			System.gc();
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (Exception e)
 		{
+			span.log(e.getMessage());
 			logger.error("Delete failed.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
+		}finally {
+			scope.close();
 		}
 	}
 
