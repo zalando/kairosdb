@@ -25,6 +25,8 @@ import io.opentracing.Tracer;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LegacyDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.datastore.*;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.datastore.cassandra.cache.RowKeyCache;
