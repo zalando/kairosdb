@@ -213,9 +213,12 @@ public class CassandraDatastore implements Datastore {
                              DataPoint dataPoint,
                              int ttl) throws DatastoreException {
 
-        tracer.scopeManager().active().span();
+        Span parentSpan = tracer.scopeManager().active().span();
+        Tracer.SpanBuilder spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData");
 
-        Tracer.SpanBuilder spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData").asChildOf(tracer.scopeManager().active().span());
+        if (parentSpan !=null)
+            spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData").asChildOf(parentSpan);
+
         Span span = spanBuild.start();
         span.setTag("metricName",metricName).log(tags);
         try {
@@ -399,7 +402,7 @@ public class CassandraDatastore implements Datastore {
 
         Tracer.SpanBuilder spanBuild = tracer.buildSpan("queryWithRowKeys").withTag("Name", "queryDatabase").asChildOf(tracer.scopeManager().active().span());
         Span span = spanBuild.start();
-        span.setTag("Query",query.toString());
+        span.setTag("Query",query.getTags().toString());
 
         long startTime = System.currentTimeMillis();
         long currentTimeTier = 0L;
