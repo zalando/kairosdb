@@ -1,4 +1,4 @@
-FROM registry.opensource.zalan.do/stups/openjdk:8-42
+FROM registry.opensource.zalan.do/stups/openjdk:latest
 
 EXPOSE 8080
 
@@ -9,7 +9,5 @@ ADD target/kairosdb-1.3-SNAPSHOT-distribution.tar.gz /app/
 
 COPY logback.xml /app/conf/logging
 COPY conf/kairosdb.properties /app/conf/kairosdb.properties
-
-COPY target/scm-source.json /
 
 CMD ["/app/bin/kairosdb.sh", "run"]
