@@ -1,5 +1,6 @@
 package org.kairosdb.datastore.cassandra;
 
+import ch.qos.logback.classic.Logger;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.Session;
@@ -8,16 +9,24 @@ import com.datastax.driver.core.policies.EC2AwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.inject.Inject;
+import io.opentracing.Tracer;
+import io.opentracing.contrib.cassandra.TracingCluster;
+import io.opentracing.util.GlobalTracer;
+import org.kairosdb.core.Main;
+import org.slf4j.LoggerFactory;
+
 /**
  Created by bhawkins on 3/4/15.
  */
 public class CassandraClientImpl implements CassandraClient
 {
+	public static final Logger logger = (Logger) LoggerFactory.getLogger(CassandraClientImpl.class);
+
 	private final Cluster m_cluster;
 	private String m_keyspace;
 
 	@Inject
-	public CassandraClientImpl(CassandraConfiguration config)
+	public CassandraClientImpl(CassandraConfiguration config, Tracer tracer)
 	{
 		final Cluster.Builder builder = new Cluster.Builder();
 		if(config.getAddressTranslator().equals(CassandraConfiguration.ADDRESS_TRANSLATOR_TYPE.EC2)) {
@@ -41,7 +50,8 @@ public class CassandraClientImpl implements CassandraClient
 			builder.withCredentials(user, password);
 		}
 
-		m_cluster = builder.build();
+		logger.info("Tracer Debugging ***" + tracer.toString());
+		m_cluster = new TracingCluster(builder, tracer);
 		m_keyspace = config.getKeyspaceName();
 	}
 

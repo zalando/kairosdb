@@ -23,6 +23,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 
+import io.opentracing.Tracer;
+import io.opentracing.contrib.web.servlet.filter.TracingFilter;
 import org.eclipse.jetty.security.ConstraintMapping;
 import org.eclipse.jetty.security.ConstraintSecurityHandler;
 import org.eclipse.jetty.security.HashLoginService;
@@ -41,6 +43,7 @@ import org.eclipse.jetty.util.security.Credential;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.kairosdb.core.KairosDBService;
 import org.kairosdb.core.exception.KairosDBException;
+import org.kairosdb.core.opentracing.TracingContextListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +78,9 @@ public class WebServer implements KairosDBService
 	private String[] m_protocols;
 	private String m_keyStorePath;
 	private String m_keyStorePassword;
+
+	@Inject
+	private Tracer tracer;
 
 
 	public WebServer(int port, String webRoot)
@@ -167,6 +173,7 @@ public class WebServer implements KairosDBService
 
 			servletContextHandler.addFilter(GuiceFilter.class, "/api/*", null);
 			servletContextHandler.addServlet(DefaultServlet.class, "/api/*");
+			servletContextHandler.addEventListener(new TracingContextListener());
 
 			ResourceHandler resourceHandler = new ResourceHandler();
 			resourceHandler.setDirectoriesListed(true);

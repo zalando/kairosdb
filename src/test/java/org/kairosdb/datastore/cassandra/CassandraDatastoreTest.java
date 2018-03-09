@@ -17,6 +17,13 @@ package org.kairosdb.datastore.cassandra;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import io.opentracing.ScopeManager;
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
+import io.opentracing.Tracer;
+import io.opentracing.noop.NoopTracer;
+import io.opentracing.propagation.Format;
+import io.opentracing.util.GlobalTracer;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -182,7 +189,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
         // TODO: test the caches being hit
         final StringKeyCache stringCache = mock(StringKeyCache.class);
-        s_datastore = new CassandraDatastore(new CassandraClientImpl(cassandraConfig), cassandraConfig,
+        s_datastore = new CassandraDatastore(new CassandraClientImpl(cassandraConfig, GlobalTracer.get()), cassandraConfig,
                 dataPointFactory, mock(RowKeyCache.class), stringCache, stringCache, stringCache);
 
         System.out.println("Creating KairosDataStore");

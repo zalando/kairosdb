@@ -22,6 +22,10 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
 import com.google.inject.name.Named;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
+import io.opentracing.util.GlobalTracer;
+import org.eclipse.microprofile.opentracing.Traced;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
@@ -96,6 +100,10 @@ public class MetricsResource implements KairosMetricReporter
 
 
 	private QueryMeasurementProvider queryMeasurementProvider;
+
+	@Inject
+	private Tracer tracer;
+
 
 	@Inject
 	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
@@ -396,8 +404,12 @@ public class MetricsResource implements KairosMetricReporter
 	@POST
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path(QUERY_URL)
+	@Traced(operationName = "DatapointsQuery")
 	public Response get(String json) throws Exception
 	{
+
+		//Span span = tracer.buildSpan("Datapoint/Query").start();
+		logger.info("Tracer Debugging *** : Started Span Datapoints/Query");
 		checkNotNull(json);
 		logger.debug(json);
 
@@ -489,6 +501,7 @@ public class MetricsResource implements KairosMetricReporter
 		finally
 		{
 			ThreadReporter.clear();
+			//span.finish();
 		}
 	}
 

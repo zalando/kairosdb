@@ -230,6 +230,7 @@ public class Main
 						}
 						else
 							moduleList.add(mod);
+						logger.info("Tracer Debugging *** " + mod.toString());
 					}
 				}
 				catch (Exception e)
