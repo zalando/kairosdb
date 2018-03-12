@@ -269,32 +269,23 @@ public class MetricsResource implements KairosMetricReporter
 				return builder.build();
 			}
 		}
-		catch (JsonIOException e)
+		catch (JsonIOException|JsonSyntaxException|MalformedJsonException e)
 		{
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addError(e.getMessage()).build();
-		}
-		catch (JsonSyntaxException e)
-		{
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addError(e.getMessage()).build();
-		}
-		catch (MalformedJsonException e)
-		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (Exception e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Failed to add metric.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
@@ -369,26 +360,16 @@ public class MetricsResource implements KairosMetricReporter
 			setHeaders(responseBuilder);
 			return responseBuilder.build();
 		}
-		catch (JsonSyntaxException e)
+		catch (JsonSyntaxException|QueryException|BeanValidationException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
-		}
-		catch (QueryException e)
-		{
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addError(e.getMessage()).build();
-		}
-		catch (BeanValidationException e)
-		{
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addErrors(e.getErrorMessages()).build();
 		}
 		catch (MemoryMonitorException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			System.gc();
@@ -396,12 +377,14 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (Exception e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
@@ -497,28 +480,24 @@ public class MetricsResource implements KairosMetricReporter
 			setHeaders(responseBuilder);
 			return responseBuilder.build();
 		}
-		catch (JsonSyntaxException e)
+		catch (JsonSyntaxException|QueryException|BeanValidationException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
-		}
-		catch (QueryException e)
-		{
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addError(e.getMessage()).build();
-		}
-		catch (BeanValidationException e)
-		{
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addErrors(e.getErrorMessages()).build();
 		}
 		catch (MaxRowKeysForQueryExceededException e) {
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			logger.error("Query failed with too many rows", e);
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
 		}
 		catch (MemoryMonitorException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			Thread.sleep(1000);
 			System.gc();
@@ -526,23 +505,28 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (IOException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			logger.error("Failed to open temp folder "+datastore.getCacheDir(), e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (Exception e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
+			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		finally
 		{
 			ThreadReporter.clear();
-			//span.finish();
 			scope.close();
 		}
 	}
@@ -586,27 +570,16 @@ public class MetricsResource implements KairosMetricReporter
 
 			return setHeaders(Response.status(Response.Status.NO_CONTENT)).build();
 		}
-		catch (JsonSyntaxException e)
+		catch (JsonSyntaxException|QueryException|BeanValidationException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			return builder.addError(e.getMessage()).build();
-		}
-		catch (QueryException e)
-		{
-			span.log(e.getMessage());
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addError(e.getMessage()).build();
-		}
-		catch (BeanValidationException e)
-		{
-			span.log(e.getMessage());
-			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
-			return builder.addErrors(e.getErrorMessages()).build();
 		}
 		catch (MemoryMonitorException e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Query failed.", e);
 			System.gc();
@@ -614,12 +587,14 @@ public class MetricsResource implements KairosMetricReporter
 		}
 		catch (Exception e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Delete failed.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		}
 		catch (OutOfMemoryError e)
 		{
+			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			logger.error("Out of memory error.", e);
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();

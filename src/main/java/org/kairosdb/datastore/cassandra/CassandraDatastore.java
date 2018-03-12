@@ -22,6 +22,7 @@ import com.google.inject.name.Named;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LegacyDataPointFactory;
@@ -216,11 +217,11 @@ public class CassandraDatastore implements Datastore {
         Span parentSpan = tracer.scopeManager().active().span();
         Tracer.SpanBuilder spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData");
 
-        if (parentSpan !=null)
+        if (parentSpan != null)
             spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData").asChildOf(parentSpan);
 
         Span span = spanBuild.start();
-        span.setTag("metricName",metricName).log(tags);
+        span.setTag("metricName", metricName).log(tags);
         try {
 
             //time the data is written.
@@ -294,7 +295,7 @@ public class CassandraDatastore implements Datastore {
             span.log(e.toString());
             logger.error("Failed to put data point for metric={} tags={} ttl={}", metricName, tags, ttl);
             throw new DatastoreException(e);
-        }finally {
+        } finally {
             span.finish();
         }
     }
@@ -402,7 +403,7 @@ public class CassandraDatastore implements Datastore {
 
         Tracer.SpanBuilder spanBuild = tracer.buildSpan("queryWithRowKeys").withTag("Name", "queryDatabase").asChildOf(tracer.scopeManager().active().span());
         Span span = spanBuild.start();
-        span.setTag("Query",query.getTags().toString());
+        span.setTag("Query", query.getTags().toString());
 
         long startTime = System.currentTimeMillis();
         long currentTimeTier = 0L;
@@ -470,12 +471,12 @@ public class CassandraDatastore implements Datastore {
 
             queryCallback.endDataPoints();
         } catch (IOException e) {
+            Tags.ERROR.set(span, Boolean.TRUE);
             span.log(e.getMessage());
             e.printStackTrace();
-        }finally {
+        } finally {
             span.finish();
         }
-        span.finish();
     }
 
     @Override
