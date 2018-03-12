@@ -8,6 +8,7 @@ import com.datastax.driver.core.policies.EC2AwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.inject.Inject;
+import io.opentracing.Tracer;
 import io.opentracing.contrib.cassandra.TracingCluster;
 import io.opentracing.util.GlobalTracer;
 
@@ -20,7 +21,7 @@ public class CassandraClientImpl implements CassandraClient
 	private String m_keyspace;
 
 	@Inject
-	public CassandraClientImpl(CassandraConfiguration config)
+	public CassandraClientImpl(CassandraConfiguration config, Tracer tracer)
 	{
 		final Cluster.Builder builder = new Cluster.Builder();
 		if(config.getAddressTranslator().equals(CassandraConfiguration.ADDRESS_TRANSLATOR_TYPE.EC2)) {
@@ -44,7 +45,7 @@ public class CassandraClientImpl implements CassandraClient
 			builder.withCredentials(user, password);
 		}
 
-		m_cluster = new TracingCluster(builder, GlobalTracer.get());
+		m_cluster = new TracingCluster(builder, tracer);
 		m_keyspace = config.getKeyspaceName();
 	}
 

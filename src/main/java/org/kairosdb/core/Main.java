@@ -241,9 +241,6 @@ public class Main
 		}
 
 		m_injector = Guice.createInjector(moduleList);
-
-		//  Only do this if we are a webapp:
-        JerseyGuiceUtils.install(m_injector);
 	}
 
 
@@ -349,6 +346,7 @@ public class Main
 					}
 				}));
 
+				JerseyGuiceUtils.install(main.m_injector);
 				main.startServices();
 
 				logger.info("------------------------------------------");

@@ -6,7 +6,6 @@ cd "$KAIROSDB_BIN_DIR/.."
 
 KAIROSDB_LIB_DIR="lib"
 KAIROSDB_LOG_DIR="log"
-JETTY_ALPN_AGENT_VERSION=2.0.6
 
 if [ -f "$KAIROSDB_BIN_DIR/kairosdb-env.sh" ]; then
 	. "$KAIROSDB_BIN_DIR/kairosdb-env.sh"
@@ -42,7 +41,7 @@ done
 
 if [ "$1" = "run" ] ; then
 	shift
-	exec "$JAVA" -agentlib:jdwp=transport=dt_socket,address=1234,server=y,suspend=y -javaagent:./lib/jetty-alpn-agent-$JETTY_ALPN_AGENT_VERSION.jar $JAVA_OPTS  -cp $CLASSPATH org.kairosdb.core.Main -c run -p conf/kairosdb.properties
+	exec "$JAVA" $JAVA_OPTS -cp $CLASSPATH org.kairosdb.core.Main -c run -p conf/kairosdb.properties
 elif [ "$1" = "start" ] ; then
 	shift
 	exec "$JAVA" $JAVA_OPTS -cp $CLASSPATH org.kairosdb.core.Main \

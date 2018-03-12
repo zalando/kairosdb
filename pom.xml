@@ -25,9 +25,6 @@
         <version.javax.ws.rs-api>2.0.1</version.javax.ws.rs-api>
         <version.javax.servlet-api>3.1.0</version.javax.servlet-api>
         <version.javax.annotation-javax.annotation-api>1.3</version.javax.annotation-javax.annotation-api>
-        <jetty.alpnAgent.version>2.0.6</jetty.alpnAgent.version>
-        <jetty.alpnAgent.directory>${settings.localRepository}/org/mortbay/jetty/alpn/jetty-alpn-agent/${jetty.alpnAgent.version}</jetty.alpnAgent.directory>
-        <jetty.alpnAgent.name>jetty-alpn-agent-${jetty.alpnAgent.version}.jar</jetty.alpnAgent.name>
         <argLine />
     </properties>
 
@@ -46,13 +43,6 @@
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
             <version>3.0.3</version>
-            <exclusions>
-                <exclusion>
-                    <!-- For Lightstep gRPC compatibility: -->
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-handler</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.hectorclient</groupId>
@@ -157,31 +147,6 @@
             <artifactId>commons-logging</artifactId>
             <version>1.2</version>
         </dependency>
-
-
-        <!--
-        <dependency>
-            <groupId>com.sun.jersey.contribs.jersey-oauth</groupId>
-            <artifactId>oauth-signature</artifactId>
-            <version>1.19.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.jersey.contribs</groupId>
-            <artifactId>jersey-guice</artifactId>
-            <version>1.19.1</version>
-        </dependency> -->
-
-        <!--
-        <dependency>
-            <groupId>com.google.inject.extensions</groupId>
-            <artifactId>guice-multibindings</artifactId>
-            <version>3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.inject.extensions</groupId>
-            <artifactId>guice-servlet</artifactId>
-            <version>4.0</version>
-        </dependency> -->
 
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
@@ -290,41 +255,25 @@
         </dependency>
 
         <dependency>
-            <groupId>org.zalando</groupId>
-            <artifactId>tracing-lightstep-guice-starter</artifactId>
-            <version>0.0.1</version>
+            <groupId>io.opentracing</groupId>
+            <artifactId>opentracing-api</artifactId>
+            <version>0.31.0</version>
         </dependency>
         <dependency>
             <groupId>io.opentracing.contrib</groupId>
             <artifactId>opentracing-web-servlet-filter</artifactId>
-            <version>0.0.9</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty</artifactId>
-            <version>1.4.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-tcnative-boringssl-static</artifactId>
-            <version>2.0.5.Final</version>
+            <version>0.1.0</version>
         </dependency>
         <dependency>
             <groupId>io.opentracing.contrib</groupId>
             <artifactId>opentracing-cassandra-driver</artifactId>
-            <version>0.0.2</version>
+            <version>0.0.3</version>
         </dependency>
         <dependency>
             <groupId>io.opentracing.contrib</groupId>
             <artifactId>opentracing-jaxrs2</artifactId>
-            <version>0.0.11</version>
+            <version>0.1.3</version>
         </dependency>
-        <!--
-        <dependency>
-            <groupId>io.opentracing.contrib</groupId>
-            <artifactId>opentracing-apache-httpclient</artifactId>
-            <version>0.0.2</version>
-        </dependency>-->
 
         <dependency>
             <groupId>junit</groupId>
@@ -456,24 +405,6 @@
                 </executions>
             </plugin>
              -->
-            <plugin>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.10</version>
-                <executions>
-                    <execution>
-                        <id>get-jetty-alpn-agent</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>get</goal>
-                        </goals>
-                        <configuration>
-                            <groupId>org.mortbay.jetty.alpn</groupId>
-                            <artifactId>jetty-alpn-agent</artifactId>
-                            <version>${jetty.alpnAgent.version}</version>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>2.6</version>

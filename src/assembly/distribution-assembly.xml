@@ -19,14 +19,6 @@
     </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>${jetty.alpnAgent.directory}</directory>
-            <includes>
-               <include>${jetty.alpnAgent.name}</include>
-            </includes>
-            <outputDirectory>/lib</outputDirectory>
-        </fileSet>
-
-        <fileSet>
             <directory>${basedir}/webroot</directory>
             <filtered>false</filtered>
             <outputDirectory>/webroot</outputDirectory>
