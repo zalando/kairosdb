@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class DefaultQueryMeasurementProvider implements QueryMeasurementProvider, InternalMetricsProvider {
-    private static final String MEASURES_PREFIX = "kairosdb.queries";
+    private static final String MEASURES_PREFIX = "kairosdb.queries.";
 
     private final MetricRegistry metricRegistry;
     private final Histogram spanHistogramSuccess;
@@ -33,24 +33,28 @@ public class DefaultQueryMeasurementProvider implements QueryMeasurementProvider
         checkNotNull(metricRegistry, "metricRegistry can't be null");
         this.metricRegistry = metricRegistry;
 
-        spanHistogramSuccess = metricRegistry.histogram(MEASURES_PREFIX + ".span.success");
-        distanceHistogramSuccess = metricRegistry.histogram(MEASURES_PREFIX + ".distance.success");
+        spanHistogramSuccess = metricRegistry.histogram(MEASURES_PREFIX + "span.success");
+        distanceHistogramSuccess = metricRegistry.histogram(MEASURES_PREFIX + "distance.success");
 
-        spanHistogramError = metricRegistry.histogram(MEASURES_PREFIX + ".span.error");
-        distanceHistogramError = metricRegistry.histogram(MEASURES_PREFIX + ".distance.error");
+        spanHistogramError = metricRegistry.histogram(MEASURES_PREFIX + "span.error");
+        distanceHistogramError = metricRegistry.histogram(MEASURES_PREFIX + "distance.error");
     }
 
 
     @Override
     public void measureSpanForMetric(final QueryMetric query) {
-        final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + query.getName() + ".span");
-        measureSpan(histogram, query);
+        if (canQueryBeReported(query)) {
+            final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + query.getName() + ".span");
+            measureSpan(histogram, query);
+        }
     }
 
     @Override
     public void measureDistanceForMetric(final QueryMetric query) {
-        final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + query.getName() + ".distance");
-        measureDistance(histogram, query);
+        if (canQueryBeReported(query)) {
+            final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + query.getName() + ".distance");
+            measureDistance(histogram, query);
+        }
     }
 
     @Override
@@ -106,10 +110,14 @@ public class DefaultQueryMeasurementProvider implements QueryMeasurementProvider
         histogram.update(spanInMinutes);
     }
 
-    public void measureDistance(final Histogram histogram, final QueryMetric query) {
+    private void measureDistance(final Histogram histogram, final QueryMetric query) {
         final DateTime nowUTC = new DateTime(DateTimeZone.UTC);
         final long distanceInMillis = nowUTC.getMillis() - query.getStartTime();
         final long distanceInMinutes = distanceInMillis / 1000 / 60;
         histogram.update(distanceInMinutes);
+    }
+
+    private boolean canQueryBeReported(final QueryMetric query) {
+        return !query.getName().startsWith(MEASURES_PREFIX);
     }
 }
