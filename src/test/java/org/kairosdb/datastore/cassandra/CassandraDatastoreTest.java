@@ -17,7 +17,6 @@ package org.kairosdb.datastore.cassandra;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
-import io.opentracing.noop.NoopTracerFactory;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -183,7 +182,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
         // TODO: test the caches being hit
         final StringKeyCache stringCache = mock(StringKeyCache.class);
-        s_datastore = new CassandraDatastore(new CassandraClientImpl(cassandraConfig, NoopTracerFactory.create()), cassandraConfig,
+        s_datastore = new CassandraDatastore(new CassandraClientImpl(cassandraConfig), cassandraConfig,
                 dataPointFactory, mock(RowKeyCache.class), stringCache, stringCache, stringCache);
 
         System.out.println("Creating KairosDataStore");

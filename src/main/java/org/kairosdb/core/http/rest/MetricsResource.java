@@ -55,6 +55,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.GZIPInputStream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static javax.ws.rs.core.Response.ResponseBuilder;
 
 enum NameType
 {
@@ -112,7 +113,7 @@ public class MetricsResource implements KairosMetricReporter
 		gson = builder.create();
 	}
 
-	private Response.ResponseBuilder setHeaders(Response.ResponseBuilder responseBuilder)
+	private ResponseBuilder setHeaders(ResponseBuilder responseBuilder)
 	{
 		responseBuilder.header("Access-Control-Allow-Origin", "*");
 		responseBuilder.header("Pragma", "no-cache");
@@ -128,7 +129,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightVersion(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -139,7 +140,7 @@ public class MetricsResource implements KairosMetricReporter
 	{
 		Package thisPackage = getClass().getPackage();
 		String versionString = thisPackage.getImplementationTitle() + " " + thisPackage.getImplementationVersion();
-		Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity("{\"version\": \"" + versionString + "\"}");
+		ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity("{\"version\": \"" + versionString + "\"}");
 		setHeaders(responseBuilder);
 		return responseBuilder.build();
 	}
@@ -150,7 +151,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightMetricNames(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -168,7 +169,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightTagNames(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -187,7 +188,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightTagValues(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -206,7 +207,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightDataPoints(@HeaderParam("Access-Control-Request-Headers") String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -288,7 +289,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightQueryTags(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -332,7 +333,7 @@ public class MetricsResource implements KairosMetricReporter
 			writer.flush();
 			writer.close();
 
-			Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
+			ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 					new FileStreamingOutput(respFile));
 
 			setHeaders(responseBuilder);
@@ -382,7 +383,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightQuery(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -439,7 +440,7 @@ public class MetricsResource implements KairosMetricReporter
 			writer.flush();
 			writer.close();
 
-			Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
+			ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 					new FileStreamingOutput(respFile));
 
 			setHeaders(responseBuilder);
@@ -499,7 +500,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightDelete(@HeaderParam("Access-Control-Request-Headers") final String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") final String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -555,10 +556,9 @@ public class MetricsResource implements KairosMetricReporter
 		}
 	}
 
-	public static Response.ResponseBuilder getCorsPreflightResponseBuilder(final String requestHeaders,
-                                                                           final String requestMethod)
-	{
-		Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK);
+	public static ResponseBuilder getCorsPreflightResponseBuilder(final String requestHeaders,
+																  final String requestMethod) {
+		ResponseBuilder responseBuilder = Response.status(Response.Status.OK);
 		responseBuilder.header("Access-Control-Allow-Origin", "*");
 		responseBuilder.header("Access-Control-Allow-Headers", requestHeaders);
 		responseBuilder.header("Access-Control-Max-Age", "86400"); // Cache for one day
@@ -577,7 +577,7 @@ public class MetricsResource implements KairosMetricReporter
 	public Response corsPreflightMetricDelete(@HeaderParam("Access-Control-Request-Headers") String requestHeaders,
 			@HeaderParam("Access-Control-Request-Method") String requestMethod)
 	{
-		Response.ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
+		ResponseBuilder responseBuilder = getCorsPreflightResponseBuilder(requestHeaders, requestMethod);
 		return (responseBuilder.build());
 	}
 
@@ -621,7 +621,7 @@ public class MetricsResource implements KairosMetricReporter
 
 			DataFormatter formatter = formatters.get("json");
 
-			Response.ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
+			ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 					new ValuesStreamingOutput(formatter, values));
 			setHeaders(responseBuilder);
 			return responseBuilder.build();

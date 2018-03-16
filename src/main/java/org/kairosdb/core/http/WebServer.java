@@ -196,7 +196,6 @@ public class WebServer implements KairosDBService {
             resourceHandler.setDirectoriesListed(true);
             resourceHandler.setWelcomeFiles(new String[]{"index.html"});
             resourceHandler.setResourceBase(m_webRoot);
-            //resourceHandler.setAliases(true);
 
             HandlerList handlers = new HandlerList();
             handlers.setHandlers(new Handler[]{servletContextHandler, resourceHandler, new DefaultHandler()});
