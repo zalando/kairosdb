@@ -23,6 +23,7 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import org.influxdb.InfluxDB;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datastore.KairosDatastore;
 import org.kairosdb.core.exception.DatastoreException;
@@ -45,7 +46,7 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class DataPointsParser
 {
-	private final KairosDatastore datastore;
+	private final InfluxDB influxDB;
 	private final Reader inputStream;
 	private final Gson gson;
 	private final KairosDataPointFactory dataPointFactory;
@@ -63,10 +64,9 @@ public class DataPointsParser
 	private int dataPointCount;
 	private int ingestTime;
 
-	public DataPointsParser(KairosDatastore datastore, Reader stream, Gson gson,
-	                        KairosDataPointFactory dataPointFactory)
-	{
-		this.datastore = checkNotNull(datastore);
+	public DataPointsParser(InfluxDB influxDB, Reader stream, Gson gson,
+							KairosDataPointFactory dataPointFactory) {
+		this.influxDB = checkNotNull(influxDB);
 		this.inputStream = checkNotNull(stream);
 		this.gson = gson;
 		this.dataPointFactory = dataPointFactory;
@@ -306,6 +306,7 @@ public class DataPointsParser
 				if (type == null)
 					type = findType(metric.getValue());
 
+				// TODO: add influx here
 				if (dataPointFactory.isRegisteredType(type))
 				{
 					datastore.putDataPoint(metric.getName(), tags, dataPointFactory.createDataPoint(

@@ -22,13 +22,17 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.MalformedJsonException;
 import com.google.inject.name.Named;
+import org.influxdb.InfluxDB;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.datastore.DataPointGroup;
 import org.kairosdb.core.datastore.DatastoreQuery;
+import org.kairosdb.core.datastore.DumbQueryCallback;
+import org.kairosdb.core.datastore.InfluxDBDatastore;
 import org.kairosdb.core.datastore.KairosDatastore;
+import org.kairosdb.core.datastore.QueryCallback;
 import org.kairosdb.core.datastore.QueryMetric;
 import org.kairosdb.core.formatter.DataFormatter;
 import org.kairosdb.core.formatter.FormatterException;
@@ -74,7 +78,7 @@ public class MetricsResource implements KairosMetricReporter
 
 	public static final String QUERY_URL = "/datapoints/query";
 
-	private final KairosDatastore datastore;
+	private final InfluxDBDatastore datastore;
 	private final Map<String, DataFormatter> formatters = new HashMap<String, DataFormatter>();
 	private final QueryParser queryParser;
 
@@ -98,9 +102,8 @@ public class MetricsResource implements KairosMetricReporter
 	private QueryMeasurementProvider queryMeasurementProvider;
 
 	@Inject
-	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
-			KairosDataPointFactory dataPointFactory, QueryMeasurementProvider queryMeasurementProvider)
-	{
+	public MetricsResource(InfluxDBDatastore datastore, QueryParser queryParser,
+						   KairosDataPointFactory dataPointFactory, QueryMeasurementProvider queryMeasurementProvider) {
 		this.datastore = checkNotNull(datastore);
 		this.queryParser = checkNotNull(queryParser);
 		this.queryMeasurementProvider = checkNotNull(queryMeasurementProvider);
@@ -158,6 +161,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/metricnames")
 	public Response getMetricNames()
 	{
+		// TODO: put influx here??
 		return executeNameQuery(NameType.METRIC_NAMES);
 	}
 
@@ -176,6 +180,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/tagnames")
 	public Response getTagNames()
 	{
+		// TODO: put influx here??
 		return executeNameQuery(NameType.TAG_KEYS);
 	}
 
@@ -195,8 +200,8 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/tagvalues")
 	public Response getTagValues()
 	{
-		return
-				executeNameQuery(NameType.TAG_VALUES);
+		// TODO: put influx here??
+		return executeNameQuery(NameType.TAG_VALUES);
 	}
 
 	@OPTIONS
@@ -233,9 +238,10 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/datapoints")
 	public Response add(InputStream json)
 	{
+		// TODO: put influx here
 		try
 		{
-			DataPointsParser parser = new DataPointsParser(datastore, new InputStreamReader(json, "UTF-8"),
+			DataPointsParser parser = new DataPointsParser(influxDB, new InputStreamReader(json, "UTF-8"),
 					gson, m_kairosDataPointFactory);
 			ValidationErrors validationErrors = parser.parse();
 
@@ -296,6 +302,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/datapoints/query/tags")
 	public Response getMeta(String json)
 	{
+		// TODO: put influx here
 		checkNotNull(json);
 		logger.debug(json);
 
@@ -398,6 +405,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path(QUERY_URL)
 	public Response get(String json) throws Exception
 	{
+		// TODO: put influx here
 		checkNotNull(json);
 		logger.debug(json);
 
@@ -414,11 +422,11 @@ public class MetricsResource implements KairosMetricReporter
 
 			for (QueryMetric query : queries)
 			{
-				queryMeasurementProvider.measureSpanForMetric(query);
-				queryMeasurementProvider.measureDistanceForMetric(query);
+				QueryCallback callback = new DumbQueryCallback();
 
 				DatastoreQuery dq = datastore.createQuery(query);
 				try {
+					datastore.queryDatabase(query, callback);
 					List<DataPointGroup> results = dq.execute();
 					jsonResponse.formatQuery(results, query.isExcludeTags(), dq.getSampleSize());
 				} catch (Throwable e) {
@@ -507,6 +515,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/datapoints/delete")
 	public Response delete(String json) throws Exception
 	{
+		// TODO: just throw exception here for now
 		checkNotNull(json);
 		logger.debug(json);
 
@@ -585,6 +594,7 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/metric/{metricName}")
 	public Response metricDelete(@PathParam("metricName") String metricName) throws Exception
 	{
+		// TODO: just throw exception here for now
 		try
 		{
 			QueryMetric query = new QueryMetric(Long.MIN_VALUE, Long.MAX_VALUE, 0, metricName);
