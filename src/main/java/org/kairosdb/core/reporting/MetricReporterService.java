@@ -19,9 +19,7 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.DataPointSet;
-import org.kairosdb.core.datapoints.LongDataPointFactory;
-import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
-import org.kairosdb.core.datastore.KairosDatastore;
+import org.kairosdb.core.datastore.InfluxDBDatastore;
 import org.kairosdb.core.scheduler.KairosDBJob;
 import org.quartz.CronScheduleBuilder;
 import org.quartz.JobExecutionContext;
@@ -41,15 +39,14 @@ public class MetricReporterService implements KairosDBJob {
 
     public static final String HOSTNAME = "HOSTNAME";
     public static final String SCHEDULE_PROPERTY = "kairosdb.reporter.schedule";
-
-    private MetricReportingConfiguration config;
-    private KairosDatastore m_datastore;
-    private List<KairosMetricReporter> m_reporters;
     private final String m_hostname;
     private final String m_schedule;
+    private MetricReportingConfiguration config;
+    private InfluxDBDatastore m_datastore;
+    private List<KairosMetricReporter> m_reporters;
 
     @Inject
-    public MetricReporterService(MetricReportingConfiguration config, KairosDatastore datastore,
+    public MetricReporterService(MetricReportingConfiguration config, InfluxDBDatastore datastore,
                                  List<KairosMetricReporter> reporters,
                                  @Named(SCHEDULE_PROPERTY) String schedule,
                                  @Named(HOSTNAME) String hostname) {
@@ -80,7 +77,7 @@ public class MetricReporterService implements KairosDBJob {
                         for (DataPoint dataPoint : dataPointSet.getDataPoints()) {
                             logger.debug("Storing internal metric {} {} = {}", dataPointSet.getName(),
                                     dataPointSet.getTags(), dataPoint);
-                            m_datastore.putDataPoint(dataPointSet.getName(), dataPointSet.getTags(), dataPoint);
+                            m_datastore.putDataPoint(dataPointSet.getName(), dataPointSet.getTags(), dataPoint, 0);
                         }
                     }
                 }

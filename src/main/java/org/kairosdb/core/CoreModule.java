@@ -74,6 +74,7 @@ public class CoreModule extends AbstractModule
 	{
 		bind(MetricRegistry.class).in(Singleton.class);
 		bind(QueryQueuingManager.class).in(Singleton.class);
+		bind(KairosDatastore.class).in(Singleton.class);
 		bind(InfluxDBDatastore.class).in(Singleton.class);
 		bind(AggregatorFactory.class).to(GuiceAggregatorFactory.class).in(Singleton.class);
 		bind(GroupByFactory.class).to(GuiceGroupByFactory.class).in(Singleton.class);

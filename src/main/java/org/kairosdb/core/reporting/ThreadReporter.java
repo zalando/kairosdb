@@ -17,10 +17,8 @@
 package org.kairosdb.core.reporting;
 
 import com.google.common.collect.ImmutableSortedMap;
-import org.kairosdb.core.DataPoint;
-import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
-import org.kairosdb.core.datastore.KairosDatastore;
+import org.kairosdb.core.datastore.InfluxDBDatastore;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.util.Tags;
 
@@ -29,131 +27,117 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 /**
- Created with IntelliJ IDEA.
- User: bhawkins
- Date: 9/4/13
- Time: 2:56 PM
- To change this template use File | Settings | File Templates.
+ * Created with IntelliJ IDEA.
+ * User: bhawkins
+ * Date: 9/4/13
+ * Time: 2:56 PM
+ * To change this template use File | Settings | File Templates.
  */
-public class ThreadReporter
-{
-	private static class ReporterDataPoint
-	{
-		private String m_metricName;
-		private long m_value;
-		private ImmutableSortedMap.Builder<String, String> m_tags;
+public class ThreadReporter {
+    private static ReporterData s_reporterData = new ReporterData();
+    private static CurrentTags s_currentTags = new CurrentTags();
+    private static ReporterTime s_reportTime = new ReporterTime();
 
-		private ReporterDataPoint(String metricName, SortedMap<String, String> tags, long value)
-		{
-			m_metricName = metricName;
-			m_value = value;
-			m_tags = Tags.create();
-			m_tags.putAll(tags);
-		}
+    private ThreadReporter() {
+    }
 
-		public String getMetricName() { return (m_metricName); }
-		public long getValue() { return (m_value); }
-		public ImmutableSortedMap<String, String> getTags() { return m_tags.build(); }
-	}
+    public static long getReportTime() {
+        return s_reportTime.get();
+    }
 
-	private static class CurrentTags extends ThreadLocal<SortedMap<String, String>>
-	{
-		@Override
-		protected synchronized SortedMap<String, String> initialValue()
-		{
-			return new TreeMap<String, String>();
-		}
-	}
+    public static void setReportTime(long time) {
+        s_reportTime.set(time);
+    }
 
-	private static class ReporterData extends ThreadLocal<LinkedList<ReporterDataPoint>>
-	{
-		@Override
-		protected synchronized LinkedList<ReporterDataPoint> initialValue()
-		{
-			return (new LinkedList<ReporterDataPoint>());
-		}
+    public static void addTag(String name, String value) {
+        s_currentTags.get().put(name, value);
+    }
 
-		public void addDataPoint(ReporterDataPoint dps)
-		{
-			get().addLast(dps);
-		}
+    public static void removeTag(String name) {
+        s_currentTags.get().remove(name);
+    }
 
-		public ReporterDataPoint getNextDataPoint()
-		{
-			return get().removeFirst();
-		}
+    public static void clearTags() {
+        s_currentTags.get().clear();
+    }
 
-		public int getListSize()
-		{
-			return get().size();
-		}
-	}
+    public static void addDataPoint(String metric, long value) {
+        s_reporterData.addDataPoint(new ReporterDataPoint(metric, s_currentTags.get(), value));
+    }
 
-	private static class ReporterTime extends ThreadLocal<Long>
-	{
-		@Override
-		protected synchronized Long initialValue()
-		{
-			return (0L);
-		}
-	}
+    public static void submitData(LongDataPointFactory dataPointFactory, InfluxDBDatastore datastore) throws DatastoreException {
+        while (s_reporterData.getListSize() != 0) {
+            ReporterDataPoint dp = s_reporterData.getNextDataPoint();
 
-	private static ReporterData s_reporterData = new ReporterData();
-	private static CurrentTags s_currentTags = new CurrentTags();
-	private static ReporterTime s_reportTime = new ReporterTime();
+            datastore.putDataPoint(dp.getMetricName(), dp.getTags(),
+                    dataPointFactory.createDataPoint(s_reportTime.get(), dp.getValue()), 0);
+        }
+    }
 
-	private ThreadReporter()
-	{
-	}
+    /**
+     * Used in finally block to clear out unsent data in case an exception occurred.
+     */
+    public static void clear() {
+        while (s_reporterData.getListSize() != 0)
+            s_reporterData.getNextDataPoint();
+    }
 
-	public static void setReportTime(long time)
-	{
-		s_reportTime.set(time);
-	}
+    private static class ReporterDataPoint {
+        private String m_metricName;
+        private long m_value;
+        private ImmutableSortedMap.Builder<String, String> m_tags;
 
-	public static long getReportTime()
-	{
-		return s_reportTime.get();
-	}
+        private ReporterDataPoint(String metricName, SortedMap<String, String> tags, long value) {
+            m_metricName = metricName;
+            m_value = value;
+            m_tags = Tags.create();
+            m_tags.putAll(tags);
+        }
 
-	public static void addTag(String name, String value)
-	{
-		s_currentTags.get().put(name, value);
-	}
+        public String getMetricName() {
+            return (m_metricName);
+        }
 
-	public static void removeTag(String name)
-	{
-		s_currentTags.get().remove(name);
-	}
+        public long getValue() {
+            return (m_value);
+        }
 
-	public static void clearTags()
-	{
-		s_currentTags.get().clear();
-	}
+        public ImmutableSortedMap<String, String> getTags() {
+            return m_tags.build();
+        }
+    }
 
-	public static void addDataPoint(String metric, long value)
-	{
-		s_reporterData.addDataPoint(new ReporterDataPoint(metric, s_currentTags.get(), value));
-	}
+    private static class CurrentTags extends ThreadLocal<SortedMap<String, String>> {
+        @Override
+        protected synchronized SortedMap<String, String> initialValue() {
+            return new TreeMap<String, String>();
+        }
+    }
 
-	public static void submitData(LongDataPointFactory dataPointFactory, KairosDatastore datastore) throws DatastoreException
-	{
-		while (s_reporterData.getListSize() != 0)
-		{
-			ReporterDataPoint dp = s_reporterData.getNextDataPoint();
+    private static class ReporterData extends ThreadLocal<LinkedList<ReporterDataPoint>> {
+        @Override
+        protected synchronized LinkedList<ReporterDataPoint> initialValue() {
+            return (new LinkedList<ReporterDataPoint>());
+        }
 
-			datastore.putDataPoint(dp.getMetricName(), dp.getTags(),
-					dataPointFactory.createDataPoint(s_reportTime.get(), dp.getValue()));
-		}
-	}
+        public void addDataPoint(ReporterDataPoint dps) {
+            get().addLast(dps);
+        }
 
-	/**
-	 Used in finally block to clear out unsent data in case an exception occurred.
-	 */
-	public static void clear()
-	{
-		while (s_reporterData.getListSize() != 0)
-			s_reporterData.getNextDataPoint();
-	}
+        public ReporterDataPoint getNextDataPoint() {
+            return get().removeFirst();
+        }
+
+        public int getListSize() {
+            return get().size();
+        }
+    }
+
+    private static class ReporterTime extends ThreadLocal<Long> {
+        @Override
+        protected synchronized Long initialValue() {
+            return (0L);
+        }
+    }
 
 }

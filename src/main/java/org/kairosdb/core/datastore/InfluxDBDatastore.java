@@ -21,17 +21,20 @@ import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.ListMultimap;
 import com.google.inject.Inject;
 import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
 import org.influxdb.dto.QueryResult;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.SelectConditionStep;
+import org.jooq.conf.ParamType;
 import org.jooq.impl.DSL;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.aggregator.Aggregator;
 import org.kairosdb.core.aggregator.LimitAggregator;
+import org.kairosdb.core.datapoints.DoubleDataPoint;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.groupby.GroupBy;
 import org.kairosdb.core.groupby.GroupByResult;
@@ -39,10 +42,12 @@ import org.kairosdb.core.groupby.Grouper;
 import org.kairosdb.core.groupby.TagGroupBy;
 import org.kairosdb.core.groupby.TagGroupByResult;
 import org.kairosdb.core.groupby.TypeGroupByResult;
+import org.kairosdb.datastore.cassandra.InfluxDBConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -58,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.jooq.SQLDialect.DEFAULT;
 import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.val;
 
 public class InfluxDBDatastore implements Datastore {
@@ -67,14 +73,19 @@ public class InfluxDBDatastore implements Datastore {
     private final KairosDataPointFactory m_dataPointFactory;
     private final InfluxDB influxDB;
     private final String dbName;
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX");
 
+    //2018-03-21T15:56:00.005Z
     @Inject
     private InfluxDBDatastore(final KairosDataPointFactory dataPointFactory,
-                              final InfluxDB influxDB,
-                              final String dbName) {
+                              final InfluxDBConfiguration configuration) {
         this.m_dataPointFactory = dataPointFactory;
-        this.influxDB = influxDB;
-        this.dbName = dbName;
+        this.influxDB = InfluxDBFactory.connect(
+                configuration.getInfluxDBURL(),
+                configuration.getUsername(),
+                configuration.getPassword());
+
+        this.dbName = configuration.getInfluxDBName();
     }
 
     @Override
@@ -100,7 +111,7 @@ public class InfluxDBDatastore implements Datastore {
             pointBuilder.tag(entry.getKey(), entry.getValue());
         }
 
-        influxDB.write(pointBuilder.build());
+        influxDB.write(this.dbName, "", pointBuilder.build());
     }
 
 
@@ -110,17 +121,17 @@ public class InfluxDBDatastore implements Datastore {
         long startTime = query.getStartTime();
         long endTime = query.getEndTime();
         SelectConditionStep queryBuilder = create.select(field("data"))
-                .from(query.getName())
-                .where(val("time").ge(Long.toString(startTime)).and(val("time").le(Long.toString(endTime))));
+                .from(name(query.getName()))
+                .where(field("time").ge(startTime).and(field("time").le(endTime)));
         for (Map.Entry<String, Collection<String>> entry : query.getTags().asMap().entrySet()) {
             Condition cond = null;
             String tagName = entry.getKey();
             for (String tagValue : entry.getValue()) {
                 if (cond == null) {
-                    cond = val(tagName).eq(tagValue);
+                    cond = field(tagName).eq(tagValue);
                     continue;
                 }
-                cond = cond.or(val(tagName).eq(tagValue));
+                cond = cond.or(field(tagName).eq(tagValue));
             }
             if (cond != null) {
                 queryBuilder = queryBuilder.and(cond);
@@ -129,10 +140,9 @@ public class InfluxDBDatastore implements Datastore {
 
         final String sql = queryBuilder
                 .limit(query.getLimit())
-                .getSQL();
+                .getSQL(ParamType.INLINED);
 
         logger.warn("executing query for queryDatabase: {}", sql);
-
         QueryResult response = this.influxDB.query(new Query(sql, dbName));
         if (response.hasError()) {
             throw new DatastoreException(response.getError());
@@ -147,19 +157,34 @@ public class InfluxDBDatastore implements Datastore {
             for (QueryResult.Series series : result.getSeries()) {
                 // Series is a datapointrow
                 try {
-                    // TODO: replace "double" with proper type
-                    queryCallback.startDataPointSet("double", series.getTags());
+                    Map<String, String> tags = series.getTags();
+                    if (tags == null) {
+                        tags = new HashMap<>();
+                    }
+
+                    // TODO: replace "double" with proper type?? Or treat everything as "double"?
+                    queryCallback.startDataPointSet("double", tags);
                 } catch (IOException e) {
-                    //!!! do nothing
+                    logger.error("could not start data point set: {}", e.getMessage());
+                    continue;
                 }
 
-                // TODO: add datapoints here
-                // Question: what series.getValues() mean?
+                for (List<Object> value : series.getValues()) {
+                    try {
+                        long timestamp = dateFormat.parse((String) value.get(0)).getTime();
+                        double pointValue = (Double) value.get(1);
+
+                        queryCallback.addDataPoint(new DoubleDataPoint(timestamp, pointValue));
+                    } catch (Exception e) {
+                        logger.error("could not parse data point {}: {}", value.toString(), e.getMessage());
+                    }
+                }
 
                 try {
                     queryCallback.endDataPoints();
                 } catch (IOException e) {
-                    //!!! do nothing
+                    logger.error("could not end data point set: {}", e.getMessage());
+                    continue;
                 }
 
                 logger.warn("!!!series received: {}", series.toString());
@@ -223,6 +248,7 @@ public class InfluxDBDatastore implements Datastore {
         }
 
         TagSetImpl tagSet = new TagSetImpl();
+
         for (QueryResult.Result result : response.getResults()) {
             if (result.hasError()) {
                 logger.error("one of the results returned an error: {}", result.getError());
@@ -230,6 +256,10 @@ public class InfluxDBDatastore implements Datastore {
             }
 
             for (QueryResult.Series series : result.getSeries()) {
+                if (series.getTags() == null) {
+                    continue;
+                }
+
                 for (Map.Entry<String, String> tag : series.getTags().entrySet()) {
                     tagSet.addTag(tag.getKey(), tag.getValue());
                 }
