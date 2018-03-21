@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -61,6 +62,7 @@ import static org.jooq.impl.DSL.val;
 
 public class InfluxDBDatastore implements Datastore {
     public static final Logger logger = LoggerFactory.getLogger(InfluxDBDatastore.class);
+    public static final int DEFAULT_LIMIT = 10000;
 
     private final KairosDataPointFactory m_dataPointFactory;
     private final InfluxDB influxDB;
@@ -129,7 +131,7 @@ public class InfluxDBDatastore implements Datastore {
                 .limit(query.getLimit())
                 .getSQL();
 
-        logger.warn("executing query: {}", sql);
+        logger.warn("executing query for queryDatabase: {}", sql);
 
         QueryResult response = this.influxDB.query(new Query(sql, dbName));
         if (response.hasError()) {
@@ -180,15 +182,77 @@ public class InfluxDBDatastore implements Datastore {
         return null;
     }
 
+    @Override
+    public TagSet queryMetricTags(final DatastoreMetricQuery query) throws DatastoreException {
+        final DSLContext create = DSL.using(DEFAULT);
+        long startTime = query.getStartTime();
+        long endTime = query.getEndTime();
+
+        SelectConditionStep queryBuilder = create.select(field("*"))
+                .from(query.getName())
+                .where(val("time").ge(Long.toString(startTime)).and(val("time").le(Long.toString(endTime))));
+
+
+        for (Map.Entry<String, Collection<String>> entry : query.getTags().asMap().entrySet()) {
+            Condition cond = null;
+            String tagName = entry.getKey();
+            for (String tagValue : entry.getValue()) {
+                if (cond == null) {
+                    cond = val(tagName).eq(tagValue);
+                    continue;
+                }
+                cond = cond.or(val(tagName).eq(tagValue));
+            }
+            if (cond != null) {
+                queryBuilder = queryBuilder.and(cond);
+            }
+        }
+        int limit = query.getLimit();
+        if (limit > DEFAULT_LIMIT || limit == 0) {
+            limit = DEFAULT_LIMIT;
+        }
+        final String sql = queryBuilder
+                .limit(limit)
+                .getSQL();
+
+        logger.warn("executing query for queryMetricTags: {}", sql);
+
+        QueryResult response = this.influxDB.query(new Query(sql, dbName));
+        if (response.hasError()) {
+            throw new DatastoreException(response.getError());
+        }
+
+        TagSetImpl tagSet = new TagSetImpl();
+        for (QueryResult.Result result : response.getResults()) {
+            if (result.hasError()) {
+                logger.error("one of the results returned an error: {}", result.getError());
+                continue;
+            }
+
+            for (QueryResult.Series series : result.getSeries()) {
+                for (Map.Entry<String, String> tag : series.getTags().entrySet()) {
+                    tagSet.addTag(tag.getKey(), tag.getValue());
+                }
+            }
+        }
+
+        return tagSet;
+    }
 
     @Override
     public void deleteDataPoints(final DatastoreMetricQuery deleteQuery) throws DatastoreException {
         throw new DatastoreException("deleteDataPoints is not supported");
     }
 
-    @Override
-    public TagSet queryMetricTags(final DatastoreMetricQuery query) throws DatastoreException {
-        return null;
+    public void delete(QueryMetric metric) throws DatastoreException {
+        throw new DatastoreException("delete is not supported");
+    }
+
+    public List<DataPointGroup> queryTags(QueryMetric metric) throws DatastoreException {
+        TagSet tagSet = this.queryMetricTags(metric);
+
+        return Collections.<DataPointGroup>singletonList(new EmptyDataPointGroup(metric.getName(), tagSet));
+
     }
 
     public DatastoreQuery createQuery(QueryMetric metric) throws DatastoreException {
