@@ -34,6 +34,7 @@ import org.json.JSONException;
 import org.json.JSONWriter;
 import org.kairosdb.core.admin.CacheMetricsModule;
 import org.kairosdb.core.datastore.DatastoreQuery;
+import org.kairosdb.core.datastore.InfluxDBDatastore;
 import org.kairosdb.core.datastore.KairosDatastore;
 import org.kairosdb.core.datastore.QueryCallback;
 import org.kairosdb.core.datastore.QueryMetric;
@@ -440,26 +441,27 @@ public class Main
 
 	public void runImport(InputStream in) throws IOException, DatastoreException
 	{
-		KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
-		KairosDataPointFactory dpFactory = m_injector.getInstance(KairosDataPointFactory.class);
-
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
-
-		Gson gson = new Gson();
-		String line;
-		while ((line = reader.readLine()) != null)
-		{
-			DataPointsParser dataPointsParser = new DataPointsParser(ds, new StringReader(line),
-					gson, dpFactory);
-
-			ValidationErrors validationErrors = dataPointsParser.parse();
-
-			for (String error : validationErrors.getErrors())
-			{
-				logger.error(error);
-				System.err.println(error);
-			}
-		}
+		logger.error("runImport is disabled");
+//		KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
+//		KairosDataPointFactory dpFactory = m_injector.getInstance(KairosDataPointFactory.class);
+//
+//		BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
+//
+//		Gson gson = new Gson();
+//		String line;
+//		while ((line = reader.readLine()) != null)
+//		{
+//			DataPointsParser dataPointsParser = new DataPointsParser(ds, new StringReader(line),
+//					gson, dpFactory);
+//
+//			ValidationErrors validationErrors = dataPointsParser.parse();
+//
+//			for (String error : validationErrors.getErrors())
+//			{
+//				logger.error(error);
+//				System.err.println(error);
+//			}
+//		}
 	}
 
 	/**
@@ -519,7 +521,7 @@ public class Main
 
 		logger.info("Stopping Datastore");
 		//Stop the datastore
-		KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
+		InfluxDBDatastore ds = m_injector.getInstance(InfluxDBDatastore.class);
 		ds.close();
 	}
 

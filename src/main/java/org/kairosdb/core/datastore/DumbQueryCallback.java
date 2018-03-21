@@ -8,20 +8,36 @@ import java.util.List;
 import java.util.Map;
 
 public class DumbQueryCallback implements QueryCallback {
-    private List<DataPoint> dataPoints = new LinkedList<>();
+    private List<DataPointRow> dataPointRows = new LinkedList<>();
+    private DataPointRowImpl currentDataPointRow;
+    private final String metricName;
+
+    public DumbQueryCallback(final String metricName) {
+        this.metricName = metricName;
+    }
 
     @Override
     public void addDataPoint(final DataPoint datapoint) throws IOException {
-        dataPoints.add(datapoint);
+        this.currentDataPointRow.addDataPoint(datapoint);
     }
 
     @Override
     public void startDataPointSet(final String dataType, final Map<String, String> tags) throws IOException {
-        // effectively noop
+        this.currentDataPointRow = new DataPointRowImpl();
+        this.currentDataPointRow.setName(metricName);
+
+        for (Map.Entry<String, String> entry : tags.entrySet()) {
+            this.currentDataPointRow.addTag(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override
     public void endDataPoints() throws IOException {
-        // effectively noop
+        this.dataPointRows.add(this.currentDataPointRow);
+        this.currentDataPointRow = null;
+    }
+
+    public List<DataPointRow> getRows() {
+        return this.dataPointRows;
     }
 }
