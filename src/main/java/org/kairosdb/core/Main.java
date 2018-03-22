@@ -32,11 +32,8 @@ import org.h2.util.StringUtils;
 import org.json.JSONException;
 import org.json.JSONWriter;
 import org.kairosdb.core.admin.CacheMetricsModule;
-import org.kairosdb.core.datastore.DatastoreQuery;
 import org.kairosdb.core.datastore.InfluxDBDatastore;
-import org.kairosdb.core.datastore.KairosDatastore;
 import org.kairosdb.core.datastore.QueryCallback;
-import org.kairosdb.core.datastore.QueryMetric;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.exception.KairosDBException;
 import org.kairosdb.datastore.cassandra.cache.CachingModule;
@@ -63,7 +60,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
 
 public class Main
 {
@@ -370,92 +366,15 @@ public class Main
 		return (m_injector);
 	}
 
-	public void runMissTest()
-	{
-		try
-		{
-			KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
-
-			long start = System.currentTimeMillis();
-			int I;
-
-			for (I = 0; I < 100000; I++)
-			{
-				String metricName = UUID.randomUUID().toString();
-				DatastoreQuery query = ds.createQuery(new QueryMetric(0, 0, "abc123" + metricName));
-				query.execute();
-				query.close();
-			}
-
-			long stop = System.currentTimeMillis();
-			long time = stop - start;
-			System.out.println(time);
-			System.out.println((I * 1000) / time);
-
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
 
 	public void runExport(Writer out, List<String> metricNames) throws DatastoreException, IOException
 	{
-		RecoveryFile recoveryFile = new RecoveryFile();
-		try
-		{
-			KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
-			Iterable<String> metrics;
-
-			if (metricNames != null && metricNames.size() > 0)
-				metrics = metricNames;
-			else
-				metrics = ds.getMetricNames();
-
-			for (String metric : metrics)
-			{
-				if (!recoveryFile.contains(metric))
-				{
-					logger.info("Exporting: " + metric);
-					QueryMetric qm = new QueryMetric(1L, 0, metric);
-					ExportQueryCallback callback = new ExportQueryCallback(metric, out);
-					ds.export(qm, callback);
-
-					recoveryFile.writeMetric(metric);
-				}
-				else
-					logger.info("Skipping metric " + metric + " because it was already exported.");
-			}
-		}
-		finally
-		{
-			recoveryFile.close();
-		}
+		logger.error("runExport is disabled");
 	}
 
 	public void runImport(InputStream in) throws IOException, DatastoreException
 	{
 		logger.error("runImport is disabled");
-//		KairosDatastore ds = m_injector.getInstance(KairosDatastore.class);
-//		KairosDataPointFactory dpFactory = m_injector.getInstance(KairosDataPointFactory.class);
-//
-//		BufferedReader reader = new BufferedReader(new InputStreamReader(in, UTF_8));
-//
-//		Gson gson = new Gson();
-//		String line;
-//		while ((line = reader.readLine()) != null)
-//		{
-//			DataPointsParser dataPointsParser = new DataPointsParser(ds, new StringReader(line),
-//					gson, dpFactory);
-//
-//			ValidationErrors validationErrors = dataPointsParser.parse();
-//
-//			for (String error : validationErrors.getErrors())
-//			{
-//				logger.error(error);
-//				System.err.println(error);
-//			}
-//		}
 	}
 
 	/**

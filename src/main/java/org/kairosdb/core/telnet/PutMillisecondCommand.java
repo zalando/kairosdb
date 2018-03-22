@@ -24,7 +24,7 @@ import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.datapoints.DoubleDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
-import org.kairosdb.core.datastore.KairosDatastore;
+import org.kairosdb.core.datastore.InfluxDBDatastore;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.util.Tags;
@@ -39,14 +39,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.kairosdb.util.Preconditions.checkNotNullOrEmpty;
 
 public class PutMillisecondCommand implements TelnetCommand, KairosMetricReporter {
-    private KairosDatastore m_datastore;
+    private InfluxDBDatastore m_datastore;
     private AtomicInteger m_counter = new AtomicInteger();
     private String m_hostName;
     private LongDataPointFactory m_longFactory;
     private DoubleDataPointFactory m_doubleFactory;
 
     @Inject
-    public PutMillisecondCommand(KairosDatastore datastore, @Named("HOSTNAME") String hostname,
+    public PutMillisecondCommand(InfluxDBDatastore datastore, @Named("HOSTNAME") String hostname,
                                  LongDataPointFactory longFactory, DoubleDataPointFactory doubleFactory) {
         checkNotNullOrEmpty(hostname);
         m_hostName = hostname;
@@ -92,7 +92,7 @@ public class PutMillisecondCommand implements TelnetCommand, KairosMetricReporte
             tags.put("add", "tag");
 
         m_counter.incrementAndGet();
-        m_datastore.putDataPoint(metricName, tags.build(), dp);
+        m_datastore.putDataPoint(metricName, tags.build(), dp, 0);
     }
 
     private void validateTag(int tagCount, String[] tag) throws ValidationException {

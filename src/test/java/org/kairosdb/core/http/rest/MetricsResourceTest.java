@@ -82,7 +82,6 @@ public class MetricsResourceTest
 				bind(Integer.class).annotatedWith(Names.named(WebServer.JETTY_PORT_PROPERTY)).toInstance(9001);
 				bind(String.class).annotatedWith(Names.named(WebServer.JETTY_WEB_ROOT_PROPERTY)).toInstance("bogus");
 				bind(Datastore.class).toInstance(datastore);
-				bind(KairosDatastore.class).in(Singleton.class);
 				bind(AggregatorFactory.class).to(TestAggregatorFactory.class);
 				bind(GroupByFactory.class).to(TestGroupByFactory.class);
 				bind(QueryParser.class).in(Singleton.class);
