@@ -238,14 +238,18 @@ public class MetricsResource implements KairosMetricReporter
 	@Path("/datapoints")
 	public Response add(@Context HttpHeaders httpHeaders, InputStream json)
 	{
-		ScopeManager scopeManager = tracer.scopeManager();
-		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
-		Tracer.SpanBuilder spanBuild = tracer.buildSpan("/datapoints").withTag("Name","/datapoints").withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
-		if (spanContext != null)
-			spanBuild.asChildOf(spanContext);
+//		ScopeManager scopeManager = tracer.scopeManager();
+//		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+//		Tracer.SpanBuilder spanBuild = tracer.buildSpan("/datapoints").withTag("Name","datapoints").withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+//		if (spanContext != null)
+//			spanBuild.asChildOf(spanContext);
+//
+//		Span span = spanBuild.start();
+//		Scope scope = scopeManager.activate(span, true);
+//		span.log(json.toString());
 
-		Span span = spanBuild.start();
-		Scope scope = scopeManager.activate(span, true);
+		Scope scope = activateScope("datapoints", httpHeaders);
+		Span span = scope.span();
 		span.log(json.toString());
 
 		try
@@ -768,5 +772,16 @@ public class MetricsResource implements KairosMetricReporter
 				m_responseFile.delete();
 			}
 		}
+	}
+
+	public io.opentracing.Scope activateScope(String spanName, HttpHeaders httpHeaders) {
+		ScopeManager scopeManager = tracer.scopeManager();
+		SpanContext spanContext = tracer.extract(Format.Builtin.HTTP_HEADERS, new HttpHeadersCarrier(httpHeaders.getRequestHeaders()));
+		Tracer.SpanBuilder spanBuild = tracer.buildSpan(spanName).withTag("Name",spanName).withTag(Tags.SPAN_KIND.getKey(),Tags.SPAN_KIND_SERVER);
+		if (spanContext != null)
+			spanBuild.asChildOf(spanContext);
+
+		Span span = spanBuild.start();
+		return scopeManager.activate(span, true);
 	}
 }
