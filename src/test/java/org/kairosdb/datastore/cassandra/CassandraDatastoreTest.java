@@ -17,6 +17,9 @@ package org.kairosdb.datastore.cassandra;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import io.opentracing.Tracer;
+import io.opentracing.noop.NoopTracer;
+import io.opentracing.util.GlobalTracer;
 import org.hamcrest.CoreMatchers;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

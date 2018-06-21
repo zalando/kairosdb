@@ -19,9 +19,15 @@ import com.datastax.driver.core.*;
 import com.google.common.collect.*;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import io.opentracing.Scope;
+import io.opentracing.Span;
+import io.opentracing.Tracer;
+import io.opentracing.tag.Tags;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LegacyDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.datastore.*;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.datastore.cassandra.cache.RowKeyCache;
@@ -115,6 +121,12 @@ public class CassandraDatastore implements Datastore {
 
     private final Set<String> m_indexTagList;
 
+    @Inject
+    private Tracer tracer;
+
+    @Inject
+    private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
+
     private CassandraConfiguration m_cassandraConfiguration;
 
     @Inject
@@ -201,6 +213,15 @@ public class CassandraDatastore implements Datastore {
                              ImmutableSortedMap<String, String> tags,
                              DataPoint dataPoint,
                              int ttl) throws DatastoreException {
+
+        Span parentSpan = tracer.scopeManager().active().span();
+        Tracer.SpanBuilder spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData");
+
+        if (parentSpan != null)
+            spanBuild = tracer.buildSpan("putDataPoint").withTag("Name", "putData").asChildOf(parentSpan);
+
+        Span span = spanBuild.start();
+        span.setTag("metricName", metricName).log(tags);
         try {
 
             //time the data is written.
@@ -271,8 +292,11 @@ public class CassandraDatastore implements Datastore {
             boundStatement.setInt(3, ttl);
             m_session.executeAsync(boundStatement);
         } catch (Exception e) {
+            span.log(e.toString());
             logger.error("Failed to put data point for metric={} tags={} ttl={}", metricName, tags, ttl);
             throw new DatastoreException(e);
+        } finally {
+            span.finish();
         }
     }
 
@@ -376,6 +400,11 @@ public class CassandraDatastore implements Datastore {
 
     private void queryWithRowKeys(DatastoreMetricQuery query,
                                   QueryCallback queryCallback, Collection<DataPointsRowKey> rowKeys) {
+
+        Tracer.SpanBuilder spanBuild = tracer.buildSpan("queryWithRowKeys").withTag("Name", "queryDatabase").asChildOf(tracer.scopeManager().active().span());
+        Span span = spanBuild.start();
+        span.setTag("Query", query.getTags().toString());
+
         long startTime = System.currentTimeMillis();
         long currentTimeTier = 0L;
         String currentType = null;
@@ -442,7 +471,11 @@ public class CassandraDatastore implements Datastore {
 
             queryCallback.endDataPoints();
         } catch (IOException e) {
+            Tags.ERROR.set(span, Boolean.TRUE);
+            span.log(e.getMessage());
             e.printStackTrace();
+        } finally {
+            span.finish();
         }
     }
 
