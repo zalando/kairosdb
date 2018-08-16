@@ -25,6 +25,7 @@ import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.DataPointListener;
 import org.kairosdb.core.KairosDataPointFactory;
@@ -66,13 +67,12 @@ public class KairosDatastore
 	private String m_baseCacheDir;
 	private volatile String m_cacheDir;
 
-	@Inject
 	private Tracer tracer;
 
 	@SuppressWarnings("ResultOfMethodCallIgnored")
 	@Inject
 	public KairosDatastore(Datastore datastore, QueryQueuingManager queuingManager,
-	      List<DataPointListener> dataPointListeners, KairosDataPointFactory dataPointFactory)
+	      List<DataPointListener> dataPointListeners, KairosDataPointFactory dataPointFactory, Tracer tracer)
 			throws DatastoreException
 	{
 		m_datastore = checkNotNull(datastore);
@@ -83,6 +83,8 @@ public class KairosDatastore
 		m_baseCacheDir = System.getProperty("java.io.tmpdir") + "/kairos_cache/";
 
 		setupCacheDirectory();
+
+		this.tracer = tracer;
 	}
 
 	@SuppressWarnings("UnusedDeclaration")
@@ -248,32 +250,27 @@ public class KairosDatastore
 
 		DatastoreQuery dq;
 
-		Span span = tracer.buildSpan("create_query").start();
+		Span span = tracer.activeSpan();
 
-		try(Scope scope = tracer.scopeManager().activate(span, false))
+		try
 		{
 			dq = new DatastoreQueryImpl(metric);
-			span.setTag("query_waiting_count", m_queuingManager.getQueryWaitingCount());
+			if(span != null) {
+				span.setTag("query_waiting_count", m_queuingManager.getQueryWaitingCount());
+			}
+
 		}
 		catch (UnsupportedEncodingException e)
 		{
-			Tags.ERROR.set(span, Boolean.TRUE);
-			span.log(e.getMessage());
 			throw new DatastoreException(e);
 		}
 		catch (NoSuchAlgorithmException e)
 		{
-			Tags.ERROR.set(span, Boolean.TRUE);
-			span.log(e.getMessage());
 			throw new DatastoreException(e);
 		}
 		catch (InterruptedException e)
 		{
-			Tags.ERROR.set(span, Boolean.TRUE);
-			span.log(e.getMessage());
 			throw new DatastoreException(e);
-		}finally {
-			span.finish();
 		}
 
 		return (dq);
