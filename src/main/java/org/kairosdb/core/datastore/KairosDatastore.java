@@ -249,7 +249,7 @@ public class KairosDatastore
 
 		DatastoreQuery dq;
 
-		Span span = GlobalTracer.get().activeSpan();
+		Span span = tracer.activeSpan();
 
 		try
 		{
