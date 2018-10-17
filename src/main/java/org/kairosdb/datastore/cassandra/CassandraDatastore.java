@@ -82,6 +82,9 @@ public class CassandraDatastore implements Datastore {
 
     public final long m_rowWidthRead;
     public final long m_rowWidthWrite;
+    public final long m_newRowWidthRead;
+    public final long m_newRowWidthWrite;
+    public final long m_newRowKeyStartTime;
 
     private static final Charset UTF_8 = Charset.forName("UTF-8");
     public static final String ROW_KEY_METRIC_NAMES = "metric_names";
@@ -160,6 +163,9 @@ public class CassandraDatastore implements Datastore {
 
         m_rowWidthRead = cassandraConfiguration.getRowWidthRead();
         m_rowWidthWrite = cassandraConfiguration.getRowWidthWrite();
+        m_newRowWidthRead = cassandraConfiguration.getNewRowWidth();
+        m_newRowWidthWrite = cassandraConfiguration.getNewRowWidth();
+        m_newRowKeyStartTime = cassandraConfiguration.getNewRowKeyStartTimeMs();
     }
 
     public long getRowWidthRead() {
@@ -207,6 +213,13 @@ public class CassandraDatastore implements Datastore {
                 Span span = GlobalTracer.get().activeSpan();
             //time the data is written.
             long writeTime = System.currentTimeMillis();
+            long rowWidth = 0L;
+
+            if(dataPoint.getTimestamp() >= m_newRowKeyStartTime) {
+                rowWidth = m_newRowWidthWrite;
+            } else {
+                rowWidth = m_rowWidthWrite;
+            }
             if (0 == ttl) {
                 ttl = m_cassandraConfiguration.getDatapointTtl();
             }
@@ -214,10 +227,11 @@ public class CassandraDatastore implements Datastore {
             int rowKeyTtl = 0;
             //Row key will expire after configured ReadRowWidth
             if (ttl != 0) {
-                rowKeyTtl = ttl + ((int) (m_rowWidthWrite / 1000));
+                rowKeyTtl = ttl + ((int) (rowWidth / 1000));
             }
 
             final long rowTime = calculateRowTimeWrite(dataPoint.getTimestamp());
+            logger.info("Data points Insert row key time: {}", rowTime);
             final DataPointsRowKey dataPointsRowKey = new DataPointsRowKey(metricName, rowTime, dataPoint.getDataStoreDataType(), tags);
             final ByteBuffer serializedKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(dataPointsRowKey);
 
@@ -394,6 +408,7 @@ public class CassandraDatastore implements Datastore {
         long startTime = System.currentTimeMillis();
         long currentTimeTier = 0L;
         String currentType = null;
+        long rWidth = 0L;
 
         List<CQLQueryRunner> runners = new ArrayList<>();
         List<DataPointsRowKey> queryKeys = new ArrayList<>();
@@ -413,6 +428,13 @@ public class CassandraDatastore implements Datastore {
             queryKeys.addAll(rowKeys);
         } else {
             for (DataPointsRowKey rowKey : rowKeys) {
+                long rowWidth = 0L;
+                //Use new row keys width based on the timestamp
+                if (rowKey.getTimestamp() >= m_newRowKeyStartTime) {
+                    rowWidth = m_newRowWidthRead;
+                } else {
+                    rowWidth = m_rowWidthRead;
+                }
                 if (currentTimeTier == 0L)
                     currentTimeTier = rowKey.getTimestamp();
 
@@ -426,7 +448,7 @@ public class CassandraDatastore implements Datastore {
                     // logger.info("Creating new query runner: metric={} size={} ts-delta={}", queryKeys.get(0).getMetricName(), queryKeys.size(), currentTimeTier - rowKey.getTimestamp());
                     runners.add(new CQLQueryRunner(m_session, m_psQueryDataPoints, m_kairosDataPointFactory,
                             queryKeys,
-                            query.getStartTime(), query.getEndTime(), m_rowWidthRead, queryCallback, query.getLimit(), query.getOrder()));
+                            query.getStartTime(), query.getEndTime(), rowWidth, queryCallback, query.getLimit(), query.getOrder()));
 
                     queryKeys = new ArrayList<>();
                     queryKeys.add(rowKey);
@@ -437,12 +459,19 @@ public class CassandraDatastore implements Datastore {
             }
         }
 
+        //Use new row keys width based on the timestamp
+        if (query.getStartTime() >= m_newRowKeyStartTime) {
+            rWidth = m_newRowWidthRead;
+        } else {
+            rWidth = m_rowWidthRead;
+        }
+
         //There may be stragglers that are not ran
         if (!queryKeys.isEmpty()) {
             // logger.info("Creating new runner for remaining keys: metric={} size={}", queryKeys.get(0).getMetricName(), queryKeys.size());
             runners.add(new CQLQueryRunner(m_session, m_psQueryDataPoints, m_kairosDataPointFactory,
                     queryKeys,
-                    query.getStartTime(), query.getEndTime(), m_rowWidthRead, queryCallback, query.getLimit(), query.getOrder()));
+                    query.getStartTime(), query.getEndTime(), rWidth, queryCallback, query.getLimit(), query.getOrder()));
         }
 
         //Changing the check rate
@@ -476,6 +505,7 @@ public class CassandraDatastore implements Datastore {
             DataPointsRowKey rowKey = rowKeyIterator.next();
             long rowKeyTimestamp = rowKey.getTimestamp();
             // TODO check which width to use
+            // TODO check which width to use based on newRowKeyTimestamp
             if (deleteQuery.getStartTime() <= rowKeyTimestamp && (deleteQuery.getEndTime() >= rowKeyTimestamp + m_rowWidthRead - 1)) {
                 // TODO fix me
                 //m_dataPointWriteBuffer.deleteRow(rowKey, now);  // delete the whole row
@@ -552,11 +582,22 @@ public class CassandraDatastore implements Datastore {
     }
 
     public long calculateRowTimeRead(long timestamp) {
-        return (timestamp - (Math.abs(timestamp) % m_rowWidthRead));
+
+        if(m_cassandraConfiguration.isUseNewRowKeyRead() && timestamp >= m_newRowKeyStartTime) {
+            return (timestamp - (Math.abs(timestamp) % m_newRowWidthRead));
+        }
+        else {
+            return (timestamp - (Math.abs(timestamp) % m_rowWidthRead));
+        }
     }
 
     public long calculateRowTimeWrite(long timestamp) {
-        return (timestamp - (Math.abs(timestamp) % m_rowWidthWrite));
+        if(m_cassandraConfiguration.isUseNewRowKeyWrite() && timestamp >= m_newRowKeyStartTime) {
+            return (timestamp - (Math.abs(timestamp) % m_newRowWidthWrite));
+        }
+        else {
+            return (timestamp - (Math.abs(timestamp) % m_rowWidthWrite));
+        }
     }
 
 
@@ -733,6 +774,15 @@ public class CassandraDatastore implements Datastore {
                                                                     long endTime,
                                                                     SetMultimap<String, String> filterTags,
                                                                     int limit) {
+        long rowWidth = 0L;
+
+        //Get the new read row key width based on the timestamp
+        if(startTime > m_newRowKeyStartTime) {
+            rowWidth = m_newRowWidthRead;
+        } else {
+            rowWidth = m_rowWidthRead;
+        }
+
         final List<DataPointsRowKey> rowKeys = new LinkedList<>();
         if (m_cassandraConfiguration.isUseNewSplitIndexRead() && endTime >= m_cassandraConfiguration.getNewSplitIndexStartTimeMs()) {
             // Allowed cases for this branch (* - a point defined by m_cassandraConfiguration.getNewSplitIndexStartTimeMs())
@@ -776,7 +826,7 @@ public class CassandraDatastore implements Datastore {
                             useSplitField,
                             useSplit,
                             startTime,
-                            m_cassandraConfiguration.getNewSplitIndexStartTimeMs() - m_rowWidthRead,
+                            m_cassandraConfiguration.getNewSplitIndexStartTimeMs() - rowWidth,
                             filterTags,
                             limit);
                 }
@@ -899,6 +949,8 @@ public class CassandraDatastore implements Datastore {
             DataPointsRowKey startKey = new DataPointsRowKey(metricName, calculateRowTimeRead(startTime), "");
             DataPointsRowKey endKey = new DataPointsRowKey(metricName, calculateRowTimeRead(endTime), "");
             endKey.setEndSearchKey(true);
+            logger.info("Row Key Index Start Key: {}", startKey.toString());
+            logger.info("Row Key Index End Key: {}", endKey.toString());
 
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
@@ -909,6 +961,8 @@ public class CassandraDatastore implements Datastore {
 
             startKey = new DataPointsRowKey(metricName, calculateRowTimeRead(0), "");
             endKey = new DataPointsRowKey(metricName, calculateRowTimeRead(endTime), "");
+            logger.info("Row Key Index Start Key: {}", startKey.toString());
+            logger.info("Row Key Index End Key: {}", endKey.toString());
 
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
@@ -919,7 +973,7 @@ public class CassandraDatastore implements Datastore {
             long calculatedStartTime = calculateRowTimeRead(startTime);
             // Use write width here, as END time is upper bound for query and end with produces the bigger timestamp
             long calculatedEndTime = calculateRowTimeWrite(endTime);
-            // logger.info("calculated: s={} cs={} e={} ce={}", startTime, calculatedStarTime, endTime, calculatedEndTime);
+             logger.info("calculated: s={} cs={} e={} ce={}", startTime, calculatedStartTime, endTime, calculatedEndTime);
 
             DataPointsRowKey startKey = new DataPointsRowKey(metricName, calculatedStartTime, "");
             DataPointsRowKey endKey = new DataPointsRowKey(metricName, calculatedEndTime, "");
@@ -1035,6 +1089,7 @@ public class CassandraDatastore implements Datastore {
         public void addDataPoint(DataPoint datapoint) throws IOException {
             long time = datapoint.getTimestamp();
             long rowTime = calculateRowTimeWrite(time);
+            logger.info("Data Points row key time: {}", rowTime);
             if (m_currentRow == null) {
                 m_currentRow = new DataPointsRowKey(m_metric, rowTime, m_currentType, m_currentTags);
             }

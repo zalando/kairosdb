@@ -51,6 +51,22 @@ public class CassandraConfiguration
 	public static final String NEW_SPLIT_INDEX_START_TIME_MS = "kairosdb.datastore.cassandra.new_split_index_start_time_ms";
 	public static final String USE_NEW_SPLIT_INDEX_READ = "kairosdb.datastore.cassandra.use_new_split_index_read";
 	public static final String USE_NEW_SPLIT_INDEX_WRITE = "kairosdb.datastore.cassandra.use_new_split_index_write";
+	public static final String USE_NEW_ROW_KEY_WRITE = "kairosdb.datastore.cassandra.use_new_row_key_write";
+	public static final String USE_NEW_ROW_KEY_READ = "kairosdb.datastore.cassandra.use_new_row_key_read";
+	public static final String NEW_ROW_KEY_START_TIME_MS = "kairosdb.datastore.cassandra.new_row_key_start_time_ms";
+	public static final String NEW_ROW_WIDTH = "kairosdb.datastore.cassandra.new_row_width";
+
+	@Inject(optional = true)
+	@Named(USE_NEW_ROW_KEY_WRITE)
+	private boolean m_useNewRowKeyWrite = false;
+
+	@Inject(optional = true)
+	@Named(USE_NEW_ROW_KEY_READ)
+	private boolean m_useNewRowKeyRead = false;
+
+	@Inject(optional = true)
+	@Named(NEW_ROW_KEY_START_TIME_MS)
+	private long m_newRowKeyStartTimeMs = 0l;
 
 	@Inject(optional = true)
 	@Named(USE_NEW_SPLIT_INDEX_READ)
@@ -63,6 +79,18 @@ public class CassandraConfiguration
 	@Inject(optional = true)
 	@Named(NEW_SPLIT_INDEX_START_TIME_MS)
 	private long m_newSplitIndexStartTimeMs = 0l;
+
+	@Inject(optional = true)
+	@Named(NEW_ROW_WIDTH)
+	private long m_newRowWidth = 0l;
+
+	public long getNewRowWidth() { return m_newRowWidth; }
+
+	public boolean isUseNewRowKeyWrite() { return m_useNewRowKeyWrite; }
+
+	public boolean isUseNewRowKeyRead() { return m_useNewRowKeyRead; }
+
+	public long getNewRowKeyStartTimeMs() { return m_newRowKeyStartTimeMs; }
 
 	public boolean isUseNewSplitIndexRead() {
 		return m_useNewSplitIndexRead;
