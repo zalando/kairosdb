@@ -46,6 +46,7 @@ import org.kairosdb.core.opentracing.HttpHeadersCarrier;
 import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.core.reporting.ThreadReporter;
 import org.kairosdb.datastore.cassandra.MaxRowKeysForQueryExceededException;
+import org.kairosdb.datastore.cassandra.metrics.CardinalityMetrics;
 import org.kairosdb.util.MemoryMonitorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -110,9 +111,11 @@ public class MetricsResource implements KairosMetricReporter {
 
 	private TimeLimiter limiter;
 
+	private CardinalityMetrics metrics;
+
 	@Inject
 	public MetricsResource(KairosDatastore datastore, QueryParser queryParser,
-						   KairosDataPointFactory dataPointFactory, QueryMeasurementProvider queryMeasurementProvider, Tracer tracer) {
+						   KairosDataPointFactory dataPointFactory, QueryMeasurementProvider queryMeasurementProvider, Tracer tracer, CardinalityMetrics metrics) {
 		this.datastore = checkNotNull(datastore);
 		this.queryParser = checkNotNull(queryParser);
 		this.queryMeasurementProvider = checkNotNull(queryMeasurementProvider);
@@ -124,6 +127,7 @@ public class MetricsResource implements KairosMetricReporter {
 
 		this.tracer = tracer;
 		limiter = new SimpleTimeLimiter(Executors.newCachedThreadPool());
+		this.metrics = metrics;
 	}
 
 	private ResponseBuilder setHeaders(ResponseBuilder responseBuilder) {
@@ -427,6 +431,7 @@ public class MetricsResource implements KairosMetricReporter {
 
 						queryMeasurementProvider.measureSpanForMetric(query);
 						queryMeasurementProvider.measureDistanceForMetric(query);
+						metrics.measureCardinalityMetric(query);
 
 						DatastoreQuery dq = datastore.createQuery(query);
 						try {

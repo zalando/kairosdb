@@ -224,6 +224,7 @@ public class KairosDatastore {
 		Span span = tracer.activeSpan();
 
 		try {
+
 			dq = new DatastoreQueryImpl(metric);
 
 			if (span != null) {

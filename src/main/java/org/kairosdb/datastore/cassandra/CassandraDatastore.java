@@ -68,6 +68,8 @@ public class CassandraDatastore implements Datastore {
 
     public static final String QUERY_ROW_KEY_SPLIT_INDEX = "SELECT column1 FROM row_key_split_index WHERE metric_name = ? AND tag_name = ? and tag_value IN ? AND column1 >= ? and column1 <= ? LIMIT ?";
 
+    public static final String QUERY_ROW_KEY_INDEX_CARDINALITY = "SELECT count(*) FROM row_key_index WHERE key = ?";
+
     // TODO: delete next 3 constants when we're done with switching tables and row_key_split_index_2 is deleted
     public static final String QUERY_ROW_KEY_SPLIT_INDEX_2 = "SELECT column1 FROM row_key_split_index_2 WHERE metric_name = ? AND tag_name = ? and tag_value IN ? AND column1 >= ? and column1 <= ? LIMIT ?";
     public static final String ROW_KEY_INDEX_SPLIT_2_INSERT = "INSERT INTO row_key_split_index_2 " +
@@ -104,6 +106,7 @@ public class CassandraDatastore implements Datastore {
     private final PreparedStatement m_psInsertString;
     private final PreparedStatement m_psQueryStringIndex;
     private final PreparedStatement m_psQueryRowKeyIndex;
+    private final PreparedStatement m_psQueryRowKeyIndex2;
     private final PreparedStatement m_psQueryRowKeySplitIndex;
     private final PreparedStatement m_psQueryDataPoints;
 
@@ -157,6 +160,7 @@ public class CassandraDatastore implements Datastore {
         m_psInsertString = m_session.prepare(STRING_INDEX_INSERT).setConsistencyLevel(cassandraConfiguration.getDataWriteLevelMeta());
         m_psQueryStringIndex = m_session.prepare(QUERY_STRING_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeyIndex = m_session.prepare(QUERY_ROW_KEY_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
+        m_psQueryRowKeyIndex2 = m_session.prepare(QUERY_ROW_KEY_INDEX_CARDINALITY).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeySplitIndex = m_session.prepare(QUERY_ROW_KEY_SPLIT_INDEX).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryRowKeySplitIndex2 = m_session.prepare(QUERY_ROW_KEY_SPLIT_INDEX_2).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
         m_psQueryDataPoints = m_session.prepare(QUERY_DATA_POINTS).setConsistencyLevel(cassandraConfiguration.getDataReadLevel());
@@ -1067,6 +1071,31 @@ public class CassandraDatastore implements Datastore {
 //
 //        return rowKeys;
 //    }
+
+    /**
+     * Method to get the count of rows for partition in Cassandra on row_key_index table
+     * @param metricName
+     */
+    public long getRowKeyIndexCardinality(String metricName) {
+
+        final DataPointsRowKeySerializer serializer = new DataPointsRowKeySerializer();
+        final BoundStatement bs = m_psQueryRowKeyIndex2.bind();
+
+        ByteBuffer bMetricName;
+        try {
+            bMetricName = ByteBuffer.wrap(metricName.getBytes("UTF-8"));
+        } catch (UnsupportedEncodingException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        bs.setBytes(0, bMetricName);
+
+        ResultSet rs = m_session.execute(bs);
+
+        Long count = rs.all().get(0).getLong("count");
+
+        return count;
+    }
 
 
     private class DeletingCallback implements QueryCallback {
