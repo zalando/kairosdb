@@ -231,7 +231,7 @@ public class CassandraDatastore implements Datastore {
             }
 
             final long rowTime = calculateRowTimeWrite(dataPoint.getTimestamp());
-            logger.info("Data points Insert row key time: {}", rowTime);
+            //logger.info("Data points Insert row key time: {}", rowTime);
             final DataPointsRowKey dataPointsRowKey = new DataPointsRowKey(metricName, rowTime, dataPoint.getDataStoreDataType(), tags);
             final ByteBuffer serializedKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(dataPointsRowKey);
 
@@ -949,8 +949,6 @@ public class CassandraDatastore implements Datastore {
             DataPointsRowKey startKey = new DataPointsRowKey(metricName, calculateRowTimeRead(startTime), "");
             DataPointsRowKey endKey = new DataPointsRowKey(metricName, calculateRowTimeRead(endTime), "");
             endKey.setEndSearchKey(true);
-            logger.info("Row Key Index Start Key: {}", startKey.toString());
-            logger.info("Row Key Index End Key: {}", endKey.toString());
 
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
@@ -961,8 +959,6 @@ public class CassandraDatastore implements Datastore {
 
             startKey = new DataPointsRowKey(metricName, calculateRowTimeRead(0), "");
             endKey = new DataPointsRowKey(metricName, calculateRowTimeRead(endTime), "");
-            logger.info("Row Key Index Start Key: {}", startKey.toString());
-            logger.info("Row Key Index End Key: {}", endKey.toString());
 
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
@@ -973,7 +969,7 @@ public class CassandraDatastore implements Datastore {
             long calculatedStartTime = calculateRowTimeRead(startTime);
             // Use write width here, as END time is upper bound for query and end with produces the bigger timestamp
             long calculatedEndTime = calculateRowTimeWrite(endTime);
-             logger.info("calculated: s={} cs={} e={} ce={}", startTime, calculatedStartTime, endTime, calculatedEndTime);
+            //logger.info("calculated: s={} cs={} e={} ce={}", startTime, calculatedStartTime, endTime, calculatedEndTime);
 
             DataPointsRowKey startKey = new DataPointsRowKey(metricName, calculatedStartTime, "");
             DataPointsRowKey endKey = new DataPointsRowKey(metricName, calculatedEndTime, "");
