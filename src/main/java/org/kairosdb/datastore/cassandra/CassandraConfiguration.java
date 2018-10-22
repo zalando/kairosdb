@@ -55,6 +55,7 @@ public class CassandraConfiguration
 	public static final String USE_NEW_ROW_KEY_READ = "kairosdb.datastore.cassandra.use_new_row_key_read";
 	public static final String NEW_ROW_KEY_START_TIME_MS = "kairosdb.datastore.cassandra.new_row_key_start_time_ms";
 	public static final String NEW_ROW_WIDTH = "kairosdb.datastore.cassandra.new_row_width";
+	public static final String USE_CARDINALITY = "kairosdb.datastore.cassandra.use_cardinality";
 
 	@Inject(optional = true)
 	@Named(USE_NEW_ROW_KEY_WRITE)
@@ -83,6 +84,14 @@ public class CassandraConfiguration
 	@Inject(optional = true)
 	@Named(NEW_ROW_WIDTH)
 	private long m_newRowWidth = 0l;
+
+	@Inject(optional = true)
+	@Named(USE_CARDINALITY)
+	private Boolean m_useCardinality = false;
+
+	public Boolean get_isUseCardinality() {
+		return m_useCardinality;
+	}
 
 	public long getNewRowWidth() { return m_newRowWidth; }
 

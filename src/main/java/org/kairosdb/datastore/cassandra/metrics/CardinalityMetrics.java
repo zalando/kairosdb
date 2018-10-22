@@ -5,6 +5,7 @@ import com.codahale.metrics.Histogram;
 import com.codahale.metrics.MetricRegistry;
 import com.google.inject.Inject;
 import org.kairosdb.core.datastore.QueryMetric;
+import org.kairosdb.datastore.cassandra.CassandraConfiguration;
 import org.kairosdb.datastore.cassandra.CassandraDatastore;
 
 public class CardinalityMetrics {
@@ -14,13 +15,14 @@ public class CardinalityMetrics {
     private final MetricRegistry metricRegistry;
     private final Histogram checkCardinality;
     private CassandraDatastore datastore;
+    private CassandraConfiguration configuration;
 
     @Inject
-    public CardinalityMetrics(MetricRegistry metricsRegistry, CassandraDatastore datastore) {
+    public CardinalityMetrics(MetricRegistry metricsRegistry, CassandraDatastore datastore, CassandraConfiguration configuration) {
 
         this.metricRegistry = metricsRegistry;
         this.datastore = datastore;
-
+        this.configuration = configuration;
         checkCardinality = metricRegistry.histogram(MEASURES_PREFIX + "cardinality");
     }
 
@@ -33,10 +35,16 @@ public class CardinalityMetrics {
     }
 
     public void measureCardinalityMetric(QueryMetric query) {
-        if (canQueryBeReported(query)) {
+        if (canQueryBeReported(query) && configuration.get_isUseCardinality()) {
             final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + query.getName() + ".cardinality");
             measureCardinality(histogram, query);
             measureCardinality(checkCardinality, query);
         }
     }
+
+    /*public void measureCardinalityMetric1(String name, int size) {
+            final Histogram histogram = metricRegistry.histogram(MEASURES_PREFIX + name + ".cardinality");
+            histogram.update(size);
+            checkCardinality.update(size);
+    }*/
 }

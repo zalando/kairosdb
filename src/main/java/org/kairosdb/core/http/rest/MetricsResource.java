@@ -431,7 +431,6 @@ public class MetricsResource implements KairosMetricReporter {
 
 						queryMeasurementProvider.measureSpanForMetric(query);
 						queryMeasurementProvider.measureDistanceForMetric(query);
-						metrics.measureCardinalityMetric(query);
 
 						DatastoreQuery dq = datastore.createQuery(query);
 						try {
@@ -444,6 +443,7 @@ public class MetricsResource implements KairosMetricReporter {
 						} finally {
 							queryMeasurementProvider.measureSpanSuccess(query);
 							queryMeasurementProvider.measureDistanceSuccess(query);
+							metrics.measureCardinalityMetric(query);
 							dq.close();
 						}
 					}
