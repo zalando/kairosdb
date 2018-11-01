@@ -28,6 +28,7 @@ import org.kairosdb.core.datastore.*;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.datastore.cassandra.cache.RowKeyCache;
 import org.kairosdb.datastore.cassandra.cache.StringKeyCache;
+import org.kairosdb.datastore.cassandra.circuitbreaker.CommandExecute;
 import org.kairosdb.util.KDataOutput;
 import org.kairosdb.util.MemoryMonitor;
 import org.slf4j.Logger;
@@ -343,7 +344,8 @@ public class CassandraDatastore implements Datastore {
             throw new RuntimeException(ex);
         }
 
-        ResultSet rs = m_session.execute(bs);
+        //ResultSet rs = m_session.execute(bs);
+        ResultSet rs = new CommandExecute(m_session, bs).execute();
 
         List<String> ret = new ArrayList<>();
         for (Row r : rs) {
@@ -843,7 +845,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(3, keySerializer.toByteBuffer(startKey));
             bs.setBytes(4, keySerializer.toByteBuffer(endKey));
 
-            ResultSet rs = m_session.execute(bs);
+            //ResultSet rs = m_session.execute(bs);
+            ResultSet rs = new CommandExecute(m_session, bs).execute();
 
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
 
@@ -853,7 +856,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
-            rs = m_session.execute(bs);
+            //rs = m_session.execute(bs);
+            rs = new CommandExecute(m_session, bs).execute();
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
         } else {
             long calculatedStartTime = calculateRowTimeRead(startTime);
@@ -868,7 +872,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(3, keySerializer.toByteBuffer(startKey));
             bs.setBytes(4, keySerializer.toByteBuffer(endKey));
 
-            ResultSet rs = m_session.execute(bs);
+            //ResultSet rs = m_session.execute(bs);
+            ResultSet rs = new CommandExecute(m_session, bs).execute();
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
         }
     }
@@ -903,7 +908,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
-            ResultSet rs = m_session.execute(bs);
+            //ResultSet rs = m_session.execute(bs);
+            ResultSet rs = new CommandExecute(m_session, bs).execute();
 
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
 
@@ -913,7 +919,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
-            rs = m_session.execute(bs);
+            //rs = m_session.execute(bs);
+            rs = new CommandExecute(m_session, bs).execute();
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
         } else {
             long calculatedStartTime = calculateRowTimeRead(startTime);
@@ -928,7 +935,8 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(1, keySerializer.toByteBuffer(startKey));
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
-            ResultSet rs = m_session.execute(bs);
+            //ResultSet rs = m_session.execute(bs);
+            ResultSet rs = new CommandExecute(m_session, bs).execute();
             filterAndAddKeys(metricName, filterTags, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
         }
     }

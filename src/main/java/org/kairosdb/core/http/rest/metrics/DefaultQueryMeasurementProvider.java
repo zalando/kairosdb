@@ -5,6 +5,7 @@ import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
+import io.opentracing.Span;
 import io.opentracing.Tracer;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -112,7 +113,7 @@ public class DefaultQueryMeasurementProvider implements QueryMeasurementProvider
 		final long spanInMillis = endTime - query.getStartTime();
 		final long spanInMinutes = spanInMillis / 1000 / 60;
 		histogram.update(spanInMinutes);
-		tracer.activeSpan().setTag("query_span_in_days", spanInMinutes / 1440);
+		checkAndUpdateSpan("query_span_in_days", spanInMinutes / 1440);
 	}
 
 	private void measureDistance(final Histogram histogram, final QueryMetric query) {
@@ -120,10 +121,19 @@ public class DefaultQueryMeasurementProvider implements QueryMeasurementProvider
 		final long distanceInMillis = nowUTC.getMillis() - query.getStartTime();
 		final long distanceInMinutes = distanceInMillis / 1000 / 60;
 		histogram.update(distanceInMinutes);
-		tracer.activeSpan().setTag("query_distance_in_days", distanceInMinutes / 1440);
+		checkAndUpdateSpan("query_distance_in_days", distanceInMinutes / 1440);
 	}
 
 	private boolean canQueryBeReported(final QueryMetric query) {
 		return !query.getName().startsWith(MEASURES_PREFIX);
+	}
+
+	private void checkAndUpdateSpan(String name, long value) {
+
+		Span span = tracer.activeSpan();
+
+		if (span != null) {
+			span.setTag(name, value);
+		}
 	}
 }
