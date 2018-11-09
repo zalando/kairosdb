@@ -888,7 +888,7 @@ public class CassandraDatastore implements Datastore {
                                         final int limit) {
         Span span = GlobalTracer.get().activeSpan();
         if (span != null) {
-            span.setTag("index_name", "row_key");
+            span.setTag("index_name", "row_key_index");
         }
 
         final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
