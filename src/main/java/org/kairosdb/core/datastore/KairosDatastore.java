@@ -402,8 +402,6 @@ public class KairosDatastore {
 			Span span = tracer.buildSpan("query_database_datapoints_count").start();
 
 			try (Scope scope = tracer.scopeManager().activate(span, false)) {
-				long queryStartTime = System.currentTimeMillis();
-
 				CachedSearchResult cachedResults = null;
 
 				List<DataPointRow> returnedRows = null;
@@ -434,11 +432,14 @@ public class KairosDatastore {
 					m_dataPointCount += returnedRow.getDataPointCount();
 				}
 
-				span.setTag("datapoint_count", m_dataPointCount);
-
 				m_rowCount = returnedRows.size();
 
+				span.setTag("datapoint_count", m_dataPointCount);
 				span.setTag("row_count", m_rowCount);
+
+                logger.info("metric=" + m_metric.getName() +
+                        " datapoint_count=" + m_dataPointCount +
+                        " row_count=" + m_rowCount);
 
 				List<DataPointGroup> queryResults = groupByTypeAndTag(m_metric.getName(),
 						returnedRows, getTagGroupBy(m_metric.getGroupBys()), m_metric.getOrder());
@@ -451,7 +452,7 @@ public class KairosDatastore {
 					throw new DatastoreException(e);
 				}
 
-				m_results = new ArrayList<DataPointGroup>();
+				m_results = new ArrayList<>();
 				for (DataPointGroup queryResult : queryResults) {
 					String groupType = DataPoint.GROUP_NUMBER;
 					//todo May want to make group type a first class citizen in DataPointGroup
