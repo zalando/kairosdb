@@ -204,7 +204,7 @@ public class CassandraDatastore implements Datastore {
                              DataPoint dataPoint,
                              int ttl) throws DatastoreException {
         try {
-                Span span = GlobalTracer.get().activeSpan();
+            Span span = GlobalTracer.get().activeSpan();
             //time the data is written.
             long writeTime = System.currentTimeMillis();
             if (0 == ttl) {
@@ -537,16 +537,6 @@ public class CassandraDatastore implements Datastore {
             ret = getMatchingRowKeys(query, limit);
         }
 
-        if (ret.size() > m_cassandraConfiguration.getMaxRowKeysForQuery()) {
-            if(span != null) {
-                span.setTag("row_count", ret.size());
-                span.setTag("max_row_keys", Boolean.TRUE);
-            }
-
-            throw new MaxRowKeysForQueryExceededException(String.format("Query for metric %s matches %d row keys, but only %d are allowed",
-                    query.getName(), ret.size(), m_cassandraConfiguration.getMaxRowKeysForQuery()));
-        }
-
         return ret;
     }
 
@@ -641,24 +631,25 @@ public class CassandraDatastore implements Datastore {
         return false;
     }
 
-    private static void filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> targetList, int limit) {
+    private void filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, int limit) {
         Span span = GlobalTracer.get().activeSpan();
-        long startTime = System.currentTimeMillis();
         final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
         final SetMultimap<String, String> filterTags = query.getTags();
         final SetMultimap<String, Pattern> tagPatterns = MultimapBuilder.hashKeys(filterTags.size()).hashSetValues().build();
         for (Map.Entry<String, String> entry : filterTags.entries()) {
             tagPatterns.put(entry.getKey(), convertGlobToPattern(entry.getValue()));
         }
-        int i = 0;
+        int rowReadCount = 0;
         for (Row r : rs) {
-            i++;
+            rowReadCount++;
 
-            if (i > limit) {
-                if(span != null) {
-                    span.setTag("row_count", i);
+            if (rowReadCount > limit) {
+                if (span != null) {
+                    span.setTag("row_count", rowReadCount);
                     span.setTag("max_row_keys", Boolean.TRUE);
                 }
+
+                logCriticalQuery(query, filteredRowKeys, rowReadCount);
 
                 throw new MaxRowKeysForQueryExceededException(
                         String.format("Too many rows to scan: metric=%s limit=%d", query.getName(), limit));
@@ -676,16 +667,36 @@ public class CassandraDatastore implements Datastore {
                 }
             }
             if (!skipKey) {
-                targetList.add(key);
+                filteredRowKeys.add(key);
             }
         }
-        final boolean isCriticalQuery = i > 5000 || targetList.size() > 100;
+
+        if (filteredRowKeys.size() > m_cassandraConfiguration.getMaxRowKeysForQuery()) {
+            if (span != null) {
+                span.setTag("row_count", filteredRowKeys.size());
+                span.setTag("max_row_keys", Boolean.TRUE);
+            }
+
+            logCriticalQuery(query, filteredRowKeys, rowReadCount);
+            throw new MaxRowKeysForQueryExceededException(
+                    String.format("Query for metric %s matches %d row keys, but only %d are allowed",
+                            query.getName(), filteredRowKeys.size(), m_cassandraConfiguration.getMaxRowKeysForQuery()));
+        }
+
+        final boolean isCriticalQuery = rowReadCount > 5000 || filteredRowKeys.size() > 100;
         if (isCriticalQuery) {
             query.setCriticalQueryUUID(UUID.randomUUID());
-            final long endTime = System.currentTimeMillis();
-            logger.warn("critical_query: uuid={} metric={} query={} read={} filtered={} time={}",
-                    query.getCriticalQueryUUID(), query.getName(), filterTags, i, targetList.size(), (endTime - startTime));
+            logCriticalQuery(query, filteredRowKeys, rowReadCount);
         }
+    }
+
+    private static void logCriticalQuery(DatastoreMetricQuery query,
+                                         Collection<DataPointsRowKey> filteredRowKeys,
+                                         int rowReadCount) {
+        final long endTime = Long.MAX_VALUE == query.getEndTime() ? System.currentTimeMillis() : query.getEndTime();
+        logger.warn("critical_query: uuid={} metric={} query={} read={} filtered={} start_time={} end_time={} duration={}",
+                query.getCriticalQueryUUID(), query.getName(), query.getTags(), rowReadCount, filteredRowKeys.size(),
+                query.getStartTime(), endTime, endTime - query.getStartTime());
     }
 
     // TODO remove when old getMatchingRowKeys is uncommented
