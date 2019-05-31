@@ -633,6 +633,10 @@ public class CassandraDatastore implements Datastore {
     }
 
     private void filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, int readRowsLimit) {
+        filterAndAddKeys(query, rs, filteredRowKeys, readRowsLimit, false);
+    }
+
+    private void filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, int readRowsLimit, boolean last) {
         final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
         final SetMultimap<String, String> filterTags = query.getTags();
         final SetMultimap<String, Pattern> tagPatterns = MultimapBuilder.hashKeys(filterTags.size()).hashSetValues().build();
@@ -662,10 +666,12 @@ public class CassandraDatastore implements Datastore {
             }
         }
 
-        final int filteredRowsLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
-        checkMaxRowKeyLimit(filteredRowKeys.size(), filteredRowsLimit, query, filteredRowKeys, rowReadCount,
-                String.format("Query for metric %s matches %d row keys, but only %d are allowed",
-                        query.getName(), filteredRowKeys.size(), filteredRowsLimit));
+        if (last) {
+            final int filteredRowsLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
+            checkMaxRowKeyLimit(filteredRowKeys.size(), filteredRowsLimit, query, filteredRowKeys, rowReadCount,
+                    String.format("Query for metric %s matches %d row keys, but only %d are allowed",
+                            query.getName(), filteredRowKeys.size(), filteredRowsLimit));
+        }
 
         final boolean isCriticalQuery = rowReadCount > 5000 || filteredRowKeys.size() > 100;
         if (isCriticalQuery) {
@@ -859,7 +865,7 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(4, keySerializer.toByteBuffer(endKey));
 
             rs = m_session.execute(bs);
-            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
+            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery(), true);
         } else {
             long calculatedStartTime = calculateRowTimeRead(startTime);
             // Use write width here, as END time is upper bound for query and end with produces the bigger timestamp
@@ -874,7 +880,7 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(4, keySerializer.toByteBuffer(endKey));
 
             ResultSet rs = m_session.execute(bs);
-            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
+            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery(), true);
         }
     }
 
@@ -923,7 +929,7 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
             rs = m_session.execute(bs);
-            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
+            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery(), true);
         } else {
             long calculatedStartTime = calculateRowTimeRead(startTime);
             // Use write width here, as END time is upper bound for query and end with produces the bigger timestamp
@@ -938,7 +944,7 @@ public class CassandraDatastore implements Datastore {
             bs.setBytes(2, keySerializer.toByteBuffer(endKey));
 
             ResultSet rs = m_session.execute(bs);
-            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery());
+            filterAndAddKeys(query, rs, collector, m_cassandraConfiguration.getMaxRowsForKeysQuery(), true);
         }
     }
 
