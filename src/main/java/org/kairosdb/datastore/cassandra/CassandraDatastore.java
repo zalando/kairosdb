@@ -648,7 +648,7 @@ public class CassandraDatastore implements Datastore {
             rowReadCount++;
 
             checkMaxRowKeyLimit(rowReadCount, readRowsLimit, query, filteredRowKeys, rowReadCount,
-                    String.format("Too many rows to scan: metric=%s readRowsLimit=%d", query.getName(), readRowsLimit));
+                    String.format("Exceeded limit: %d key rows read by KDB. Metric: %s", readRowsLimit, query.getName()));
 
             DataPointsRowKey key = keySerializer.fromByteBuffer(r.getBytes("column1"));
             Map<String, String> tags = key.getTags();
@@ -669,14 +669,14 @@ public class CassandraDatastore implements Datastore {
         if (last) {
             final int filteredRowsLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
             checkMaxRowKeyLimit(filteredRowKeys.size(), filteredRowsLimit, query, filteredRowKeys, rowReadCount,
-                    String.format("Query for metric %s matches %d row keys, but only %d are allowed",
-                            query.getName(), filteredRowKeys.size(), filteredRowsLimit));
+                    String.format("Exceeded limit: %d data point partitions read by KDB. Metric: %s",
+                            filteredRowsLimit, query.getName()));
         }
 
         final boolean isCriticalQuery = rowReadCount > 5000 || filteredRowKeys.size() > 100;
         if (isCriticalQuery) {
             query.setCriticalQueryUUID(UUID.randomUUID());
-            logCriticalQuery(query, filteredRowKeys, rowReadCount, false);
+            logCriticalQuery(query, filteredRowKeys, rowReadCount, false, readRowsLimit);
         }
     }
 
@@ -689,7 +689,7 @@ public class CassandraDatastore implements Datastore {
                 span.setTag("max_row_keys", Boolean.TRUE);
             }
 
-            logCriticalQuery(query, filteredRowKeys, rowReadCount, true);
+            logCriticalQuery(query, filteredRowKeys, rowReadCount, true, limit);
             throw new MaxRowKeysForQueryExceededException(errorMessage);
         }
     }
@@ -697,11 +697,12 @@ public class CassandraDatastore implements Datastore {
     private static void logCriticalQuery(DatastoreMetricQuery query,
                                          Collection<DataPointsRowKey> filteredRowKeys,
                                          int rowReadCount,
-                                         boolean limitExceeded) {
+                                         boolean limitExceeded,
+                                         int limit) {
         final long endTime = Long.MAX_VALUE == query.getEndTime() ? System.currentTimeMillis() : query.getEndTime();
-        logger.warn("critical_query: uuid={} metric={} query={} read={} filtered={} start_time={} end_time={} duration={} exceeded={}",
+        logger.warn("critical_query: uuid={} metric={} query={} read={} filtered={} start_time={} end_time={} duration={} exceeded={} limit={}",
                 query.getCriticalQueryUUID(), query.getName(), query.getTags(), rowReadCount, filteredRowKeys.size(),
-                query.getStartTime(), endTime, endTime - query.getStartTime(), limitExceeded);
+                query.getStartTime(), endTime, endTime - query.getStartTime(), limitExceeded, limit);
     }
 
     // TODO remove when old getMatchingRowKeys is uncommented
