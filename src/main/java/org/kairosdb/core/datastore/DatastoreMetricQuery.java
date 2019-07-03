@@ -43,4 +43,8 @@ public interface DatastoreMetricQuery
 	void setQueryLoggingType(String type);
 
 	String getQueryLoggingType();
+
+	Boolean isLoggable();
+
+	void setLoggable(Boolean loggable);
 }
