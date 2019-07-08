@@ -42,8 +42,8 @@ public class CassandraClientImpl implements CassandraClient
 
 		final PoolingOptions poolingOptions = new PoolingOptions();
 		poolingOptions
-				.setConnectionsPerHost(HostDistance.LOCAL, 4, 10)
-				.setConnectionsPerHost(HostDistance.REMOTE, 2, 4);
+				.setConnectionsPerHost(HostDistance.LOCAL, 10, 25)
+				.setConnectionsPerHost(HostDistance.REMOTE, 5, 10);
 		builder.withPoolingOptions(poolingOptions);
 
 		for (String node : config.getHostList().split(",")) {
