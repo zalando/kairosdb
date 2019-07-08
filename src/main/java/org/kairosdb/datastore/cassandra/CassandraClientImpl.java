@@ -1,9 +1,6 @@
 package org.kairosdb.datastore.cassandra;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.QueryOptions;
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.SocketOptions;
+import com.datastax.driver.core.*;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.EC2AwareRoundRobinPolicy;
 import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
@@ -19,7 +16,7 @@ public class CassandraClientImpl implements CassandraClient
 	private final Cluster m_cluster;
 	private String m_keyspace;
 
-	public static final String CASSANDRA_READ_TIMEOUT = "kairosdb.datastore.cassandra.read.timeout";
+	private static final String CASSANDRA_READ_TIMEOUT = "kairosdb.datastore.cassandra.read.timeout";
 
 	@javax.inject.Inject
 	@Named(CASSANDRA_READ_TIMEOUT)
@@ -28,29 +25,34 @@ public class CassandraClientImpl implements CassandraClient
 
 
 	@Inject
-	public CassandraClientImpl(CassandraConfiguration config)
-	{
+	public CassandraClientImpl(CassandraConfiguration config) {
 		final Cluster.Builder builder = new Cluster.Builder().withSocketOptions(
 				new SocketOptions().setReadTimeoutMillis(m_cassandraReadTimeout));
 
-		if(config.getAddressTranslator().equals(CassandraConfiguration.ADDRESS_TRANSLATOR_TYPE.EC2)) {
+		if (config.getAddressTranslator().equals(CassandraConfiguration.ADDRESS_TRANSLATOR_TYPE.EC2)) {
 			builder.withAddressTranslator(new EC2MultiRegionAddressTranslator());
 			// This should work, seems the EC2AwareRoundRobinPolicy uses REMOTE for not being in the SAME az
 			builder.withLoadBalancingPolicy(new TokenAwarePolicy(EC2AwareRoundRobinPolicy.CreateEC2AwareRoundRobinPolicy()));
-		}
-		else {
+		} else {
 			builder.withLoadBalancingPolicy(new TokenAwarePolicy(DCAwareRoundRobinPolicy.builder().build()));
 		}
 
-		builder.withQueryOptions(new QueryOptions().setConsistencyLevel(config.getDataReadLevel()));
+		final QueryOptions queryOptions = new QueryOptions().setConsistencyLevel(config.getDataReadLevel());
+		builder.withQueryOptions(queryOptions);
+
+		final PoolingOptions poolingOptions = new PoolingOptions();
+		poolingOptions
+				.setConnectionsPerHost(HostDistance.LOCAL, 4, 10)
+				.setConnectionsPerHost(HostDistance.REMOTE, 2, 4);
+		builder.withPoolingOptions(poolingOptions);
 
 		for (String node : config.getHostList().split(",")) {
 			builder.addContactPoint(node.trim());
 		}
 
-		String user = config.getUser();
-		String password = config.getPassword();
-		if(null!=user && null!=password && !"".equals(user) && !"".equals(password)) {
+		final String user = config.getUser();
+		final String password = config.getPassword();
+		if (null != user && null != password && !"".equals(user) && !"".equals(password)) {
 			builder.withCredentials(user, password);
 		}
 
