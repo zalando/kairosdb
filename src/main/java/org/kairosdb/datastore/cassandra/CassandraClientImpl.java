@@ -7,12 +7,15 @@ import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  Created by bhawkins on 3/4/15.
  */
-public class CassandraClientImpl implements CassandraClient
-{
+public class CassandraClientImpl implements CassandraClient {
+	private static final Logger logger = LoggerFactory.getLogger(CassandraClientImpl.class);
+
 	private final Cluster m_cluster;
 	private String m_keyspace;
 
@@ -22,7 +25,6 @@ public class CassandraClientImpl implements CassandraClient
 	@Named(CASSANDRA_READ_TIMEOUT)
 	// We set the default timeout as configured by the upstream driver.
 	private int m_cassandraReadTimeout = 12000;
-
 
 	@Inject
 	public CassandraClientImpl(CassandraConfiguration config) {
@@ -40,12 +42,6 @@ public class CassandraClientImpl implements CassandraClient
 		final QueryOptions queryOptions = new QueryOptions().setConsistencyLevel(config.getDataReadLevel());
 		builder.withQueryOptions(queryOptions);
 
-		final PoolingOptions poolingOptions = new PoolingOptions();
-		poolingOptions
-				.setConnectionsPerHost(HostDistance.LOCAL, 10, 25)
-				.setConnectionsPerHost(HostDistance.REMOTE, 5, 10);
-		builder.withPoolingOptions(poolingOptions);
-
 		for (String node : config.getHostList().split(",")) {
 			builder.addContactPoint(node.trim());
 		}
@@ -58,6 +54,17 @@ public class CassandraClientImpl implements CassandraClient
 
 		m_cluster = builder.build();
 		m_keyspace = config.getKeyspaceName();
+
+		final PoolingOptions poolOpts = m_cluster.getConfiguration().getPoolingOptions();
+		logger.info("Core connections per host (remote): " + poolOpts.getCoreConnectionsPerHost(HostDistance.REMOTE));
+		logger.info("Core connections per host (local): " + poolOpts.getCoreConnectionsPerHost(HostDistance.LOCAL));
+		logger.info("Max connections per host (remote): " + poolOpts.getMaxConnectionsPerHost(HostDistance.REMOTE));
+		logger.info("Max connections per host (local): " + poolOpts.getMaxConnectionsPerHost(HostDistance.LOCAL));
+		logger.info("Max requests per connection (remote): " + poolOpts.getMaxRequestsPerConnection(HostDistance.REMOTE));
+		logger.info("Max requests per connection (local): " + poolOpts.getMaxRequestsPerConnection(HostDistance.LOCAL));
+		logger.info("Max queue size: " + poolOpts.getMaxQueueSize());
+		logger.info("Pool timeout mills: " + poolOpts.getPoolTimeoutMillis());
+		logger.info("Idle timeout seconds: " + poolOpts.getIdleTimeoutSeconds());
 	}
 
 
