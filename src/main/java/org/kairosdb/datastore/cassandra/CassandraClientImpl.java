@@ -114,7 +114,7 @@ public class CassandraClientImpl implements CassandraClient {
                 final int connections = state.getOpenConnections(host);
                 final int inFlightQueries = state.getInFlightQueries(host);
 				final int maxRequestsPerConnection = poolingOptions.getMaxRequestsPerConnection(distance);
-                logger.debug("connection_stats: hosts_count={} host={} distance = {} connections={}, current_load={}, max_load={}",
+                logger.debug("connection_stats: hosts_count={} host={} distance={} connections={}, current_load={}, max_load={}",
 						connectedHosts.size(), host, distance.name(), connections, inFlightQueries, connections * maxRequestsPerConnection);
             }
         }, 0, 1, TimeUnit.MINUTES);
