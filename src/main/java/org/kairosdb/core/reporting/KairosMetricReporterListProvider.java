@@ -29,6 +29,7 @@ public class KairosMetricReporterListProvider implements Provider<List<KairosMet
 			{
 				KairosMetricReporter reporter = (KairosMetricReporter)injector.getInstance(bindingClass);
 				m_reporters.add(reporter);
+				System.out.println(reporter.getClass().getSimpleName());
 			}
 		}
 	}
