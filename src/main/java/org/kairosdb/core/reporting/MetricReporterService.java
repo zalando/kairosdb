@@ -49,8 +49,7 @@ public class MetricReporterService implements KairosDBJob {
     private final String m_schedule;
 
     @Inject
-    public MetricReporterService(MetricReportingConfiguration config,
-                                 KairosDatastore datastore,
+    public MetricReporterService(MetricReportingConfiguration config, KairosDatastore datastore,
                                  List<KairosMetricReporter> reporters,
                                  @Named(SCHEDULE_PROPERTY) String schedule,
                                  @Named(HOSTNAME) String hostname) {
@@ -79,7 +78,7 @@ public class MetricReporterService implements KairosDBJob {
                     List<DataPointSet> dpList = reporter.getMetrics(timestamp);
                     for (DataPointSet dataPointSet : dpList) {
                         for (DataPoint dataPoint : dataPointSet.getDataPoints()) {
-                            logger.info("Storing internal metric {} {} = {}", dataPointSet.getName(),
+                            logger.debug("Storing internal metric {} {} = {}", dataPointSet.getName(),
                                     dataPointSet.getTags(), dataPoint);
                             m_datastore.putDataPoint(dataPointSet.getName(), dataPointSet.getTags(), dataPoint);
                         }

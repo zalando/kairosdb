@@ -29,8 +29,5 @@
         <logger name="org.kairosdb.datastore.cassandra.CassandraClientImpl" level="DEBUG" additivity="false">
                 <appender-ref ref="stdout"/>
         </logger>
-        <logger name="org.kairosdb.core.reporting.MetricReporterService" level="DEBUG" additivity="false">
-                <appender-ref ref="stdout"/>
-        </logger>
 </configuration>
 
