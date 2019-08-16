@@ -123,6 +123,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     private final LongDataPointFactory m_longDataPointFactory;
 
     private final Set<String> m_indexTagList;
+    private final Map<String, Set<String>> m_metricIndexTagMap;
 
     private CassandraConfiguration m_cassandraConfiguration;
 
@@ -158,6 +159,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toSet());
 
+        m_metricIndexTagMap = cassandraConfiguration.getMetricIndexTagMap();
         m_cassandraClient = cassandraClient;
         m_kairosDataPointFactory = kairosDataPointFactory;
         m_longDataPointFactory = longDataPointFactory;
@@ -762,8 +764,14 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         String useSplitField = null;
         Set<String> useSplitSet = new HashSet<>();
 
+        Set<String> indexTags;
+        if (m_metricIndexTagMap.containsKey(query.getName())) {
+            indexTags = m_metricIndexTagMap.get(query.getName());
+        } else {
+            indexTags = m_indexTagList;
+        }
         SetMultimap<String, String> filterTags = query.getTags();
-        for (String split : m_indexTagList) {
+        for (String split : indexTags) {
             if (filterTags.containsKey(split)) {
                 Set<String> currentSet = filterTags.get(split);
                 final boolean currentSetIsSmaller = currentSet.size() < useSplitSet.size();

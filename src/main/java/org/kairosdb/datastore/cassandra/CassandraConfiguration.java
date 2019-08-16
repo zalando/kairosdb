@@ -6,6 +6,11 @@ import com.google.inject.name.Named;
 import com.datastax.driver.core.ConsistencyLevel;
 
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 
 /**
  Created by bhawkins on 10/13/14.
@@ -47,6 +52,7 @@ public class CassandraConfiguration {
 	public static final String CASSANDRA_MAX_ROWS_FOR_KEY_QUERY = "kairosdb.datastore.cassandra.max_rows_for_key_query";
 
 	public static final String CASSANDRA_INDEX_TAG_LIST = "kairosdb.datastore.cassandra.index_tag_list";
+	public static final String CASSANDRA_METRIC_INDEX_TAG_LIST = "kairosdb.datastore.cassandra.metric_index_tag_list";
 
 	public static final String NEW_SPLIT_INDEX_START_TIME_MS = "kairosdb.datastore.cassandra.new_split_index_start_time_ms";
 	public static final String USE_NEW_SPLIT_INDEX_READ = "kairosdb.datastore.cassandra.use_new_split_index_read";
@@ -85,6 +91,29 @@ public class CassandraConfiguration {
 	public String getIndexTagList() {
 		return m_IndexTagList;
 	}
+
+	@Inject(optional=true)
+	@Named(CASSANDRA_METRIC_INDEX_TAG_LIST)
+	private String m_MetricIndexTagList = ""; // "zmon.check.1=entity,key,application_id,stack_name"
+	private Map<String, Set<String>> m_MetricIndexTagMap = new HashMap<>();
+
+	public Map<String, Set<String>> getMetricIndexTagMap() {
+		return m_MetricIndexTagMap;
+	}
+
+	private void initMetricIndexTagMap() {
+		for (String metricsSetting : m_MetricIndexTagList.split(";")) {
+			metricsSetting = metricsSetting.trim();
+			String[] kv = metricsSetting.split("=");
+			if (kv.length != 2 || kv[0].isEmpty() || kv[1].isEmpty()) {
+				continue;
+			}
+			m_MetricIndexTagMap.put(kv[0],
+				Arrays.stream(kv[1].split("|")).map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet())
+			);
+		}
+	}
+
 
 	@Inject(optional=true)
 	@Named(CASSANDRA_MAX_ROW_KEYS_FOR_QUERY)
@@ -177,6 +206,7 @@ public class CassandraConfiguration {
 
 	public CassandraConfiguration()
 	{
+		initMetricIndexTagMap();
 	}
 
 	public CassandraConfiguration(int replicationFactor,
@@ -191,6 +221,7 @@ public class CassandraConfiguration {
 		m_replicationFactor = replicationFactor;
 		m_hostList = hostList;
 		m_keyspaceName = keyspaceName;
+		initMetricIndexTagMap();
 	}
 
 	public ConsistencyLevel getDataWriteLevelMeta()
