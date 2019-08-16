@@ -75,7 +75,7 @@ public class QueryParserTest
 
 		QueryMetric queryMetric = results.get(0);
 		assertThat(queryMetric.getName(), equalTo("abc.123"));
-		assertThat(queryMetric.getStartTime(), equalTo(784041330L));
+		assertThat(queryMetric.getStartTime(), equalTo(784020000L));
 		assertThat(queryMetric.getEndTime(), equalTo(788879730L));
 		assertThat(queryMetric.getAggregators().size(), equalTo(0));
 		assertThat(queryMetric.getGroupBys().size(), equalTo(2));
