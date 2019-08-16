@@ -213,7 +213,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
                 .filter(s -> !s.isEmpty()).collect(Collectors.toList());
     }
 
-    ListMultimap<String, String> parseMetricIndexTagMap(final String metricIndexTagList) {
+    static ListMultimap<String, String> parseMetricIndexTagMap(final String metricIndexTagList) {
         final ImmutableListMultimap.Builder<String, String> mapBuilder = ImmutableListMultimap.builder();
         for (final String metricsSetting : metricIndexTagList.split(";")) {
             String[] kv = metricsSetting.trim().split("=");

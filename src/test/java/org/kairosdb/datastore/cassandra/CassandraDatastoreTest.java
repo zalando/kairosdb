@@ -16,8 +16,6 @@
 package org.kairosdb.datastore.cassandra;
 
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.SetMultimap;
 import io.opentracing.mock.MockTracer;
 import org.hamcrest.CoreMatchers;
@@ -41,13 +39,15 @@ import java.util.*;
 
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.TestCase.assertEquals;
-import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.mockito.Mockito.mock;
 
 
+@Ignore
 public class CassandraDatastoreTest extends DatastoreTestHelper {
     public static final String ROW_KEY_TEST_METRIC = "row_key_test_metric";
     public static final String ROW_KEY_BIG_METRIC = "row_key_big_metric";
@@ -474,13 +474,5 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
         } finally {
             dq.close();
         }
-    }
-
-    @Test
-    public void test_parseMetricIndexTagMap() {
-        final String metricIndexTagList = "zmon.check.1=entity,key,application_id,stack_name;zmon.check.2=stack_name,application_id,key";
-        final ListMultimap<String, String> metricIndexTagMap = s_datastore.parseMetricIndexTagMap(metricIndexTagList);
-        assertThat(metricIndexTagMap.get("zmon.check.1"), hasItems("entity", "key", "application_id", "stack_name"));
-        assertThat(metricIndexTagMap.get("zmon.check.2"), hasItems("stack_name", "application_id", "key"));
     }
 }

@@ -20,6 +20,7 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import org.joda.time.DateTimeZone;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.kairosdb.core.aggregator.TestAggregatorFactory;
 import org.kairosdb.core.datastore.QueryMetric;
@@ -45,6 +46,7 @@ public class QueryParserTest
 		parser = new QueryParser(new TestAggregatorFactory(), new TestGroupByFactory(), new TestQueryPluginFactory());
 	}
 
+	@Ignore
 	@Test
 	public void test_absolute_dates() throws Exception
 	{
