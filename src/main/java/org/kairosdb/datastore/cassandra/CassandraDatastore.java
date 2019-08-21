@@ -765,6 +765,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     }
 
     private List<String> getIndexTags(String metricName) {
+        logger.warn("indexTags: {}, metricIndexTagMap {}", m_indexTagList, m_metricIndexTagMap);
         return m_metricIndexTagMap.containsKey(metricName) ? m_metricIndexTagMap.get(metricName) : m_indexTagList;
     }
 
