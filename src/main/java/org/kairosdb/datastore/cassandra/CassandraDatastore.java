@@ -774,7 +774,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         String useSplitField = null;
         Set<String> useSplitSet = new HashSet<>();
 
-        final List<String> indexTags = getIndexTags(query.getName());
+        List<String> indexTags = getIndexTags(query.getName());
         logger.warn("indexTags for {}: {}", query.getName(), indexTags);
         SetMultimap<String, String> filterTags = query.getTags();
         for (String split : indexTags) {
