@@ -258,6 +258,11 @@
             <version>0.3.0</version>
         </dependency>
         <dependency>
+            <groupId>io.opentracing.contrib</groupId>
+            <artifactId>opentracing-cassandra-driver</artifactId>
+            <version>0.1.4</version>
+        </dependency>
+        <dependency>
             <groupId>io.sentry</groupId>
             <artifactId>sentry-logback</artifactId>
             <version>1.7.10</version>

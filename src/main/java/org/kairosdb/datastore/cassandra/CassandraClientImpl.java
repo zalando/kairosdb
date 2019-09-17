@@ -7,6 +7,8 @@ import com.datastax.driver.core.policies.EC2MultiRegionAddressTranslator;
 import com.datastax.driver.core.policies.TokenAwarePolicy;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import io.opentracing.Tracer;
+import io.opentracing.contrib.cassandra.TracingCluster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,7 @@ public class CassandraClientImpl implements CassandraClient {
 	private static final Logger logger = LoggerFactory.getLogger(CassandraClientImpl.class);
 
 	private final Cluster m_cluster;
+	private final Tracer tracer;
 	private String m_keyspace;
 
 	private static final String CASSANDRA_READ_TIMEOUT = "kairosdb.datastore.cassandra.read.timeout";
@@ -29,7 +32,9 @@ public class CassandraClientImpl implements CassandraClient {
 	private int m_cassandraReadTimeout = 12000;
 
 	@Inject
-	public CassandraClientImpl(CassandraConfiguration config) {
+	public CassandraClientImpl(CassandraConfiguration config, Tracer tracer) {
+		this.tracer = tracer;
+
 		final Cluster.Builder builder = new Cluster.Builder().withSocketOptions(
 				new SocketOptions().setReadTimeoutMillis(m_cassandraReadTimeout));
 
@@ -54,7 +59,7 @@ public class CassandraClientImpl implements CassandraClient {
 			builder.withCredentials(user, password);
 		}
 
-		m_cluster = builder.build();
+		m_cluster = new TracingCluster(builder, tracer);
 		m_keyspace = config.getKeyspaceName();
 
 		logConnectionPoolConfig(m_cluster.getConfiguration().getPoolingOptions());
