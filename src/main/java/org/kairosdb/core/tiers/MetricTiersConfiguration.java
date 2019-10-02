@@ -1,14 +1,15 @@
 package org.kairosdb.core.tiers;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 public class MetricTiersConfiguration {
 
-    private Set<Integer> criticalChecks;
-    private Set<Integer> importantChecks;
-    private Integer queryDistanceHoursLimit;
-    private Integer queryMaxCheckTier;
+    private Set<Integer> criticalChecks = new HashSet<>();
+    private Set<Integer> importantChecks = new HashSet<>();
+    private Integer queryDistanceHoursLimit = -1;
+    private Integer queryMaxCheckTier = -1;
 
     public Integer getQueryDistanceHoursLimit() {
         return queryDistanceHoursLimit;
