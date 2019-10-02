@@ -60,6 +60,7 @@ import org.kairosdb.core.groupby.GroupBy;
 import org.kairosdb.core.groupby.GroupByFactory;
 import org.kairosdb.core.http.rest.BeanValidationException;
 import org.kairosdb.core.http.rest.QueryException;
+import org.kairosdb.core.tiers.MetricTiersConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,10 +105,13 @@ public class QueryParser
 	@Inject(optional = true)
 	@Named(DATAPOINT_TTL)
 	private long datapoints_ttl = 3024000;
+	private MetricTiersConfiguration m_metricTiersConfig;
 
 	@Inject
-	public QueryParser(AggregatorFactory aggregatorFactory, GroupByFactory groupByFactory,
-	                   QueryPluginFactory pluginFactory)
+	public QueryParser(AggregatorFactory aggregatorFactory,
+					   GroupByFactory groupByFactory,
+	                   QueryPluginFactory pluginFactory,
+					   MetricTiersConfiguration metricTiersConfig)
 	{
 		m_aggregatorFactory = aggregatorFactory;
 		m_groupByFactory = groupByFactory;
@@ -123,6 +127,7 @@ public class QueryParser
 		builder.setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES);
 
 		m_gson = builder.create();
+		m_metricTiersConfig = metricTiersConfig;
 	}
 
 	private PropertyDescriptor getPropertyDescriptor(Class objClass, String property) throws IntrospectionException
@@ -450,6 +455,10 @@ public class QueryParser
 		else
 		{
 			throw new BeanValidationException(new SimpleConstraintViolation("start_time", "relative or absolute time must be set"), "query");
+		}
+
+		if (m_metricTiersConfig.getQueryDistanceHoursLimit() > 0) {
+			startTime = Math.max(startTime, now - m_metricTiersConfig.getQueryDistanceHoursLimit() * 60 * 60_000);
 		}
 		// ensure that: now-TTL <= startTime <= now
 		startTime = Math.max(Math.min(startTime, now), now - datapoints_ttl * 1000);
