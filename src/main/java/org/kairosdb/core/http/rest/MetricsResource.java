@@ -359,7 +359,6 @@ public class MetricsResource implements KairosMetricReporter {
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (QueryRejectedException e) {
 			logger.error("Query was rejected.", e);
-			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			return setHeaders(Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (Exception e) {
@@ -506,7 +505,6 @@ public class MetricsResource implements KairosMetricReporter {
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (QueryRejectedException e) {
 			logger.error("Query was rejected.", e);
-			Tags.ERROR.set(span, Boolean.TRUE);
 			span.log(e.getMessage());
 			return setHeaders(Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (Exception e) {
