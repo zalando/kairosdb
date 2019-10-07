@@ -14,6 +14,7 @@ import org.quartz.Trigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zalando.stups.tokens.AccessToken;
+import org.zalando.stups.tokens.AccessTokens;
 
 import java.io.IOException;
 import java.util.*;
@@ -37,13 +38,13 @@ public class MetricTiersConfigurationUpdateJob implements KairosDBJob {
     public MetricTiersConfigurationUpdateJob(final MetricTiersConfiguration config,
                                              final ObjectMapper objectMapper,
                                              final Executor executor,
-                                             final AccessToken accessToken,
+                                             final AccessTokens accessTokens,
                                              @Named("kairosdb.tiers.schedule") final String schedule,
                                              @Named("zmon.hostname") final String hostname) {
         this.config = config;
         this.objectMapper = objectMapper;
         this.executor = executor;
-        this.accessToken = accessToken;
+        this.accessToken = accessTokens.getAccessToken("zmon-read");
         this.schedule = schedule;
         this.hostname = hostname;
     }
