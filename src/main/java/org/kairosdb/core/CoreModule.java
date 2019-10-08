@@ -34,7 +34,7 @@ import org.kairosdb.core.groupby.*;
 import org.kairosdb.core.http.rest.json.QueryParser;
 import org.kairosdb.core.jobs.CacheFileCleaner;
 import org.kairosdb.core.scheduler.KairosDBScheduler;
-import org.kairosdb.core.tiers.AccessTokenProvider;
+import org.kairosdb.core.tiers.AccessTokensProvider;
 import org.kairosdb.core.tiers.ExecutorProvider;
 import org.kairosdb.core.tiers.MetricTiersConfiguration;
 import org.kairosdb.core.tiers.MetricTiersConfigurationUpdateJob;
@@ -89,7 +89,7 @@ public class CoreModule extends AbstractModule
 		bind(KairosDBScheduler.class).in(Singleton.class);
 		bind(MemoryMonitor.class).in(Singleton.class);
 
-		bind(AccessTokens.class).toProvider(AccessTokenProvider.class).in(Singleton.class);
+		bind(AccessTokens.class).toProvider(AccessTokensProvider.class).in(Singleton.class);
 		bind(ObjectMapper.class).in(Singleton.class);
 		bind(Executor.class).toProvider(ExecutorProvider.class).in(Singleton.class);
 		bind(MetricTiersConfiguration.class).in(Singleton.class);
