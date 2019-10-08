@@ -19,6 +19,8 @@ public class AccessTokenProvider implements Provider<AccessTokens> {
 
     @Override
     public AccessTokens get() {
-        return Tokens.createAccessTokensWithUri(URI.create(tokensUri)).start();
+        return Tokens.createAccessTokensWithUri(URI.create(tokensUri))
+                .manageToken("zmon-read").addScope("uid")
+                .done().start();
     }
 }
