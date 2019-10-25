@@ -504,7 +504,7 @@ public class MetricsResource implements KairosMetricReporter {
 			span.log(e.getMessage());
 			return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (QueryRejectedException e) {
-			logger.error("Query was rejected.", e);
+			logger.error("Query to metric {} was rejected.", e.getMetricName());
 			span.log(e.getMessage());
 			return setHeaders(Response.status(Response.Status.SERVICE_UNAVAILABLE).entity(new ErrorResponse(e.getMessage()))).build();
 		} catch (Exception e) {
