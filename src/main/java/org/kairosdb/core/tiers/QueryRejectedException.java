@@ -7,4 +7,8 @@ public class QueryRejectedException extends Exception {
         super("Query to metric " + metricName + " was rejected due to tier limitations");
         this.metricName = metricName;
     }
+
+    public String getMetricName() {
+        return metricName;
+    }
 }
