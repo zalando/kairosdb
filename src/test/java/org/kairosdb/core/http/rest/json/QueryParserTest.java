@@ -462,7 +462,7 @@ public class QueryParserTest
 			parser.parseQueryMetric(json);
 			fail("Expected BeanValidationException");
 		}
-		catch (QueryException | QueryRejectedException e)
+		catch (QueryException e)
 		{
 			fail("Expected BeanValidationException");
 		}
