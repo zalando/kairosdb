@@ -158,7 +158,7 @@ public class QueryParser
 		}
 	}
 
-	public List<QueryMetric> parseQueryMetric(String json) throws QueryException, BeanValidationException, QueryRejectedException {
+	public List<QueryMetric> parseQueryMetric(String json) throws QueryException, BeanValidationException {
 		List<QueryMetric> ret = new ArrayList<QueryMetric>();
 
 		JsonParser parser = new JsonParser();
@@ -237,6 +237,8 @@ public class QueryParser
 				ret.add(queryMetric);
 			} catch (ContextualJsonSyntaxException e) {
 				throw new BeanValidationException(new SimpleConstraintViolation(e.getContext(), e.getMessage()), context);
+			} catch (QueryRejectedException e) {
+				logger.warn(e.getMessage());
 			}
 		}
 
