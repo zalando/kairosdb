@@ -436,25 +436,30 @@ public class MetricsResource implements KairosMetricReporter {
 						queryMeasurementProvider.measureSpanForMetric(query);
 						queryMeasurementProvider.measureDistanceForMetric(query);
 
-						DatastoreQuery dq = datastore.createQuery(query);
+						DatastoreQuery dq = null;
+						int sampleSize = 0;
 						try {
 							List<DataPointGroup> results;
 							if (query.isRejected()) {
 								logger.warn("Query to metric {} was rejected due to tier limitations", query.getName());
 								results = new ArrayList<>();
 							} else {
+								dq = datastore.createQuery(query);
 								results = dq.execute();
+								sampleSize = dq.getSampleSize();
 							}
-							jsonResponse.formatQuery(results, query.isExcludeTags(), dq.getSampleSize());
+							jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize);
 						} catch (Throwable e) {
 							queryMeasurementProvider.measureSpanError(query);
 							queryMeasurementProvider.measureDistanceError(query);
 							throw e;
 						} finally {
-							m_datapointsCount.addAndGet(dq.getSampleSize());
+							m_datapointsCount.addAndGet(sampleSize);
 							queryMeasurementProvider.measureSpanSuccess(query);
 							queryMeasurementProvider.measureDistanceSuccess(query);
-							dq.close();
+							if (dq != null) {
+								dq.close();
+							}
 						}
 					}
 
