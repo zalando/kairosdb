@@ -311,6 +311,7 @@ public class MetricsResource implements KairosMetricReporter {
 			for (QueryMetric query : queries) {
 				List<DataPointGroup> result;
 				if (query.isRejected()) {
+					logger.warn("Query to metric {} was rejected due to tier limitations", query.getName());
 					result = new ArrayList<>();
 				} else {
 					result = datastore.queryTags(query);
@@ -439,6 +440,7 @@ public class MetricsResource implements KairosMetricReporter {
 						try {
 							List<DataPointGroup> results;
 							if (query.isRejected()) {
+								logger.warn("Query to metric {} was rejected due to tier limitations", query.getName());
 								results = new ArrayList<>();
 							} else {
 								results = dq.execute();

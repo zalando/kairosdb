@@ -37,7 +37,6 @@ import org.kairosdb.core.groupby.GroupByFactory;
 import org.kairosdb.core.http.rest.BeanValidationException;
 import org.kairosdb.core.http.rest.QueryException;
 import org.kairosdb.core.tiers.MetricTiersConfiguration;
-import org.kairosdb.core.tiers.QueryRejectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
