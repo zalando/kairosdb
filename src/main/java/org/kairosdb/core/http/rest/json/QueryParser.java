@@ -152,10 +152,8 @@ public class QueryParser
 		}
 	}
 
-	private void validateMetricTier(final Metric metric) throws QueryRejectedException {
-		if (!m_metricTiersConfig.isMetricActiveForQuery(metric.getName())) {
-			throw new QueryRejectedException(metric.getName());
-		}
+	private boolean isMetricRejected(final Metric metric) {
+		return !m_metricTiersConfig.isMetricActiveForQuery(metric.getName());
 	}
 
 	public List<QueryMetric> parseQueryMetric(String json) throws QueryException, BeanValidationException {
@@ -189,7 +187,6 @@ public class QueryParser
 				Metric metric = m_gson.fromJson(metricsArray.get(I), Metric.class);
 
 				validateObject(metric, context);
-				validateMetricTier(metric);
 
 				long startTime = getStartTime(query);
 				QueryMetric queryMetric = new QueryMetric(startTime, query.getCacheTime(),
@@ -233,12 +230,11 @@ public class QueryParser
 					queryMetric.setOrder(Order.fromString(order.getAsString(), context));
 
 				queryMetric.setTags(metric.getTags());
+				queryMetric.setRejected(isMetricRejected(metric));
 
 				ret.add(queryMetric);
 			} catch (ContextualJsonSyntaxException e) {
 				throw new BeanValidationException(new SimpleConstraintViolation(e.getContext(), e.getMessage()), context);
-			} catch (QueryRejectedException e) {
-				logger.warn(e.getMessage());
 			}
 		}
 
