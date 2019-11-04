@@ -425,6 +425,7 @@ public class QueryParser
 
 		if (m_metricTiersConfig.getQueryDistanceHoursLimit() > 0) {
 			startTime = Math.max(startTime, now - m_metricTiersConfig.getQueryDistanceHoursLimit() * 60 * 60_000);
+			logger.debug("Start time was changed to {}", startTime);
 		}
 		// ensure that: now-TTL <= startTime <= now
 		startTime = Math.max(Math.min(startTime, now), now - datapoints_ttl * 1000);
