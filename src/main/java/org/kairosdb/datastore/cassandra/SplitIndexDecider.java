@@ -9,27 +9,27 @@ import java.util.stream.Collectors;
 
 public class SplitIndexDecider {
     public SplitIndex decideSplitIndex(List<String> indexTags, SetMultimap<String, String> filterTags) {
-        String useSplitField = null;
-        Set<String> useSplitSet = new HashSet<>();
+        String splitField = null;
+        Set<String> splitSet = new HashSet<>();
 
         if (useMetricAsSplitField(indexTags, filterTags)) {
-            useSplitField = "metric";
-            useSplitSet = filterTags.get("key").stream().map((key) -> extractMetricsFromKey(key)).collect(Collectors.toSet());
+            splitField = "metric";
+            splitSet = filterTags.get("key").stream().map((key) -> extractMetricsFromKey(key)).collect(Collectors.toSet());
         } else {
             for (String split : indexTags) {
                 if (filterTags.containsKey(split)) {
                     Set<String> currentSet = filterTags.get(split);
-                    final boolean currentSetIsSmaller = currentSet.size() < useSplitSet.size();
-                    final boolean currentSetIsNotEmpty = currentSet.size() > 0 && useSplitSet.isEmpty();
+                    final boolean currentSetIsSmaller = currentSet.size() < splitSet.size();
+                    final boolean currentSetIsNotEmpty = currentSet.size() > 0 && splitSet.isEmpty();
                     final boolean currentSetHasNoWildcards = currentSet.stream().noneMatch(x -> x.contains("*") || x.contains("?"));
                     if ((currentSetIsSmaller || currentSetIsNotEmpty) && currentSetHasNoWildcards) {
-                        useSplitSet = currentSet;
-                        useSplitField = split;
+                        splitField = split;
+                        splitSet = currentSet;
                     }
                 }
             }
         }
-        return new SplitIndex(useSplitField, useSplitSet);
+        return new SplitIndex(splitField, splitSet);
     }
 
     /* Rule when to use metric as split index key

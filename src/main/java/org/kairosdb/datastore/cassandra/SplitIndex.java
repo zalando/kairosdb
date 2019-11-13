@@ -18,5 +18,11 @@ public class SplitIndex {
     public Set<String> getSplitIndexValues() {
         return splitIndexValues;
     }
+
+    public boolean isDefined() {
+        return this.getSplitIndexField() != null &&
+                !"".equals(this.getSplitIndexField()) &&
+                this.getSplitIndexValues().size() > 0;
+    }
 }
 

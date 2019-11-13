@@ -829,10 +829,10 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             long endTime = calculateRowTimeWrite(query.getEndTime());
             logger.info("calculated: s={} e={}", startTime, endTime);
 
-            if (splitIndex.getSplitIndexField() != null && !"".equals(splitIndex.getSplitIndexField()) && splitIndex.getSplitIndexValues().size() > 0) {
+            if (splitIndex.isDefined()) {
                 span.setTag("type", "split");
                 return getMatchingRowKeysFromSplitIndex(query, splitIndex.getSplitIndexField(), useSplit, startTime, endTime, limit);
-            } else {
+            } else{
                 span.setTag("type", "global");
                 return getMatchingRowKeysFromRegularIndex(query, startTime, endTime, limit);
             }
