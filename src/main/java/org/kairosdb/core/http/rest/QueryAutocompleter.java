@@ -22,10 +22,7 @@ public class QueryAutocompleter {
         for (final String key : keys) {
             try {
                 final String metric = extractMetricName(key);
-                if (metric == null) {
-                    continue;
-                }
-                if (isWildcard(metric)) {
+                if (metric == null || isWildcard(metric)) {
                     return;
                 }
                 metrics.add(metric);
