@@ -5,17 +5,24 @@ import org.kairosdb.core.datastore.QueryMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TimeZone;
 
 public class QueryAutocompleter {
     private static final Logger logger = LoggerFactory.getLogger(QueryAutocompleter.class);
 
     private static final String METRIC_TAG_NAME = "metric";
     private static final String KEY_TAG_NAME = "key";
+    private static final LocalDateTime START_TIME_METRIC_SPLIT_WRITE = LocalDateTime.parse("2019-11-11T00:00:00");
 
     public void complete(QueryMetric query) {
-        if (!query.getTags().containsKey(METRIC_TAG_NAME)) {
+        // TODO: Drop query start time checking after the retention period
+        LocalDateTime queryStart = LocalDateTime.ofInstant(Instant.ofEpochMilli(query.getStartTime()),
+                TimeZone.getDefault().toZoneId());
+        if (!query.getTags().containsKey(METRIC_TAG_NAME) && START_TIME_METRIC_SPLIT_WRITE.isBefore(queryStart)) {
             completeMetricTag(query);
         }
     }
