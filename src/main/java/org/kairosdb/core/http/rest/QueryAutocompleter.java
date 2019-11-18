@@ -11,13 +11,18 @@ import java.util.Set;
 public class QueryAutocompleter {
     private static final Logger logger = LoggerFactory.getLogger(QueryAutocompleter.class);
 
+    private static final String METRIC_TAG_NAME = "metric";
+    private static final String KEY_TAG_NAME = "key";
+
     public void complete(QueryMetric query) {
-        completeMetricTag(query);
+        if (!query.getTags().containsKey(METRIC_TAG_NAME)) {
+            completeMetricTag(query);
+        }
     }
 
     private void completeMetricTag(QueryMetric query) {
         final SetMultimap<String, String> tags = query.getTags();
-        final Set<String> keys = tags.get("key");
+        final Set<String> keys = tags.get(KEY_TAG_NAME);
         final Set<String> metrics = new HashSet<>();
         for (final String key : keys) {
             try {
@@ -31,7 +36,7 @@ public class QueryAutocompleter {
                 return;
             }
         }
-        tags.putAll("metric", metrics);
+        tags.putAll(METRIC_TAG_NAME, metrics);
     }
 
     private String extractMetricName(final String key) {
