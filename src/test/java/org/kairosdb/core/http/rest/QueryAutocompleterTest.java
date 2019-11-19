@@ -130,7 +130,7 @@ public class QueryAutocompleterTest {
     @Test
     public void testNotAutoCompleteIfTheStartTimeIsTooEarly() {
         Set<String> expected = emptySet();
-        long startTime = 1573223640000L; //1573344000000L;
+        long startTime = 1573344000000L;
         QueryMetric queryMetric = new QueryMetric(startTime, 60, "zmon.check.123");
         queryMetric.addTag("key", "aaa.*.bbb");
 
