@@ -22,6 +22,11 @@ public class QueryAutocompleter {
         // TODO: Drop query start time checking after the retention period
         LocalDateTime queryStart = LocalDateTime.ofInstant(Instant.ofEpochMilli(query.getStartTime()),
                 TimeZone.getDefault().toZoneId());
+        logger.info("Metric write start time: {}", START_TIME_METRIC_SPLIT_WRITE.toString());
+        logger.info("Query start time: {}", queryStart.toString());
+        logger.info("Time comparison result: {}", START_TIME_METRIC_SPLIT_WRITE.isBefore(queryStart));
+        logger.info("Is metric tag not present: {}", !query.getTags().containsKey(METRIC_TAG_NAME));
+
         if (!query.getTags().containsKey(METRIC_TAG_NAME) && START_TIME_METRIC_SPLIT_WRITE.isBefore(queryStart)) {
             completeMetricTag(query);
         }
