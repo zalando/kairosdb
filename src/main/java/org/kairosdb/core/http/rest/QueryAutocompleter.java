@@ -19,7 +19,7 @@ public class QueryAutocompleter {
     private static final LocalDateTime START_TIME_METRIC_SPLIT_WRITE = LocalDateTime.parse("2019-11-11T00:00:00");
 
     public void complete(QueryMetric query) {
-        // TODO: Drop query start time checking after the retention period
+        // TODO: Drop query start time checking after 2019-01-16
         LocalDateTime queryStart = LocalDateTime.ofInstant(Instant.ofEpochMilli(query.getStartTime()),
                 TimeZone.getDefault().toZoneId());
         if (!query.getTags().containsKey(METRIC_TAG_NAME) && START_TIME_METRIC_SPLIT_WRITE.isBefore(queryStart)) {
