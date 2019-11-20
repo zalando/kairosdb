@@ -128,11 +128,11 @@ public class MetricsResource implements KairosMetricReporter {
 
 	@Inject
 	public MetricsResource(KairosDatastore datastore,
-						   QueryParser queryParser,
-						   QueryAutocompleter queryAutocompleter,
-						   KairosDataPointFactory dataPointFactory,
-						   QueryMeasurementProvider queryMeasurementProvider,
-						   Tracer tracer) {
+							QueryParser queryParser,
+							QueryAutocompleter queryAutocompleter,
+							KairosDataPointFactory dataPointFactory,
+							QueryMeasurementProvider queryMeasurementProvider,
+							Tracer tracer) {
 		this.datastore = checkNotNull(datastore);
 		this.queryParser = checkNotNull(queryParser);
 		this.queryAutocompleter = queryAutocompleter;
