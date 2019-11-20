@@ -32,30 +32,30 @@ public class QueryAutocompleter {
         final Set<String> keys = tags.get(KEY_TAG_NAME);
         final Set<String> metrics = new HashSet<>();
         for (final String key : keys) {
-            try {
-                final String metric = extractMetricName(key);
-                if (metric == null || isWildcard(metric)) {
-                    return;
-                }
-                metrics.add(metric);
-            } catch (Exception e) {
-                logger.warn("Problem while parsing key: " + key, e);
+            final String metric = extractMetricName(key);
+            if (isWildcard(metric)) {
                 return;
             }
+            metrics.add(metric);
         }
         tags.putAll(METRIC_TAG_NAME, metrics);
     }
 
     private String extractMetricName(final String key) {
         if (null == key || "".equals(key)) return null;
-        final String[] keyParts = key.split("\\.");
-        final String metricName = keyParts[keyParts.length - 1];
-        return "".equals(metricName) ? keyParts[keyParts.length - 2] : metricName;
+        try {
+            final String[] keyParts = key.split("\\.");
+            final String metricName = keyParts[keyParts.length - 1];
+            return "".equals(metricName) ? keyParts[keyParts.length - 2] : metricName;
+        } catch (Exception e) {
+            logger.warn("Problem while parsing key: " + key, e);
+            return null;
+        }
     }
 
 
     private boolean isWildcard(final String metric) {
-        return metric.contains("*") || metric.contains("?");
+        return metric == null || metric.contains("*") || metric.contains("?");
     }
 
 }
