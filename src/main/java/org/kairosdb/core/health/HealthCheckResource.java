@@ -54,7 +54,7 @@ public class HealthCheckResource {
     @Path("check")
     public Response check() {
         for (HealthStatus healthCheck : m_healthCheckService.getChecks()) {
-            if ("Datastore-Query".equals(healthCheck.getName())) {
+            if (DatastoreQueryHealthCheck.NAME.equals(healthCheck.getName())) {
                 continue;
             }
             HealthCheck.Result result = healthCheck.execute();
