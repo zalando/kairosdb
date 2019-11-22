@@ -46,12 +46,12 @@ public class HealthCheckResourceTest
 	}
 
 	@Test
-	public void testCheckUnHealthy() throws DatastoreException
+	public void testCheckIgnoreDataStoreUnHealthy() throws DatastoreException
 	{
 		when(datastore.getMetricNames()).thenThrow(new DatastoreException("Error"));
 		Response response = resourceService.check();
 
-		assertThat(response.getStatus(), equalTo(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()));
+		assertThat(response.getStatus(), equalTo(Response.Status.NO_CONTENT.getStatusCode()));
 	}
 
 	@Test
