@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Path("/api/v1/health")
 public class HealthCheckResource {
     private final HealthCheckService m_healthCheckService;
-    public static final Logger logger = LoggerFactory.getLogger(CassandraDatastore.class);
+    public static final Logger logger = LoggerFactory.getLogger(HealthCheckResource.class);
 
     @Inject
     @Named("kairosdb.health.healthyResponseCode")
