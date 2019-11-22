@@ -1,10 +1,15 @@
 package org.kairosdb.core.health;
 
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.health.HealthCheck;
+import io.opentracing.util.GlobalTracer;
 import org.junit.Before;
 import org.junit.Test;
 import org.kairosdb.core.datastore.Datastore;
 import org.kairosdb.core.exception.DatastoreException;
+import org.kairosdb.core.http.rest.metrics.DefaultHealthCheckMetricProvider;
+import org.kairosdb.core.http.rest.metrics.DefaultQueryMeasurementProvider;
+import org.kairosdb.core.http.rest.metrics.HealthCheckMetricProvider;
 
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
@@ -28,13 +33,15 @@ public class HealthCheckResourceTest
 		when(datastore.getMetricNames()).thenReturn(Collections.<String>emptyList());
 
 		HealthCheckService healthCheckService = new TestHealthCheckService();
-		resourceService = new HealthCheckResource(healthCheckService);
+		final MetricRegistry registry = new MetricRegistry();
+		final HealthCheckMetricProvider provider = new DefaultHealthCheckMetricProvider(registry);
+		resourceService = new HealthCheckResource(healthCheckService, provider);
 	}
 
 	@Test(expected = NullPointerException.class)
 	public void testConstructorNullHealthCheckServiceInvalid()
 	{
-		new HealthCheckResource(null);
+		new HealthCheckResource(null, null);
 	}
 
 	@Test
