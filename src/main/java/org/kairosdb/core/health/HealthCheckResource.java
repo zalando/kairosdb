@@ -4,6 +4,8 @@ import com.codahale.metrics.health.HealthCheck;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import org.kairosdb.core.http.rest.MetricsResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.*;
 import javax.ws.rs.core.GenericEntity;
@@ -18,9 +20,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * Provides REST APIs for health checks
  */
 @Path("/api/v1/health")
-public class HealthCheckResource
-{
-	private final HealthCheckService m_healthCheckService;
+public class HealthCheckResource {
+    private final HealthCheckService m_healthCheckService;
+    public static final Logger logger = LoggerFactory.getLogger(HealthCheckResource.class);
 
 	@Inject
 	@Named("kairosdb.health.healthyResponseCode")
@@ -50,19 +52,20 @@ public class HealthCheckResource
 	@GET
 	@Produces(MediaType.APPLICATION_JSON + "; charset=UTF-8")
 	@Path("check")
-	public Response check()
-	{
-		for (HealthStatus healthCheck : m_healthCheckService.getChecks())
-		{
-			HealthCheck.Result result = healthCheck.execute();
-			if (!result.isHealthy())
-			{
-				return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)).build();
-			}
-		}
+	public Response check() {
+        for (HealthStatus healthCheck : m_healthCheckService.getChecks()) {
+            if (DatastoreQueryHealthCheck.NAME.equals(healthCheck.getName())) {
+                continue;
+            }
+            HealthCheck.Result result = healthCheck.execute();
+            if (!result.isHealthy()) {
+                logger.warn("Failed health check: {}. Health check result: {}", healthCheck.getName(), result);
+                return setHeaders(Response.status(Response.Status.INTERNAL_SERVER_ERROR)).build();
+            }
+        }
 
-		return setHeaders(Response.status(m_healthyResponse)).build();
-	}
+        return setHeaders(Response.status(m_healthyResponse)).build();
+    }
 
 
 	@OPTIONS
