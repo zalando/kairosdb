@@ -70,8 +70,11 @@ public class CacheWarmingUpConfiguration {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("CacheWarmingUpConfiguration{");
-        sb.append("heatingIntervalMinutes=").append(heatingIntervalMinutes.get());
-        sb.append(", enabled=").append(enabled.get());
+        sb.append("enabled=").append(enabled.get());
+        sb.append(", useRPS=").append(useRPS.get());
+        sb.append(", heatingIntervalMinutes=").append(heatingIntervalMinutes.get());
+        sb.append(", rowIntervalInMinutes=").append(rowIntervalInMinutes.get());
+        sb.append(", warmingUpInsertsPerSecond=").append(warmingUpInsertsPerSecond.get());
         sb.append('}');
         return sb.toString();
     }
