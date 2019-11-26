@@ -56,7 +56,7 @@ public class CacheWarmingUpConfiguration {
     }
 
     public void setUseRPS(boolean enabled) {
-        this.enabled.set(enabled);
+        this.useRPS.set(enabled);
     }
 
     public void setWarmingUpInsertsPerSecond(int newWarmingUpInsertsPerSecond) {
@@ -64,7 +64,7 @@ public class CacheWarmingUpConfiguration {
             logger.warn(String.format("Discarding setting newWarmingUpInsertsPerSecond to '%d' since it doesn't make sense", newWarmingUpInsertsPerSecond));
             return;
         }
-        this.rowIntervalInMinutes.set(newWarmingUpInsertsPerSecond);
+        this.warmingUpInsertsPerSecond.set(newWarmingUpInsertsPerSecond);
     }
 
     @Override
