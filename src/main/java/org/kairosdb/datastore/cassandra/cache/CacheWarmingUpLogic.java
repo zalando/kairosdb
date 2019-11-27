@@ -37,7 +37,7 @@ public class CacheWarmingUpLogic {
 
     public boolean shouldWarmingUpWork(final long currentTime, final long nextBucketStartsAt, final int minutesBeforeNextBucket) {
         final long warmingUpPeriodStartsAt = nextBucketStartsAt - minutesBeforeNextBucket * 1000 * 60;
-        return currentTime < warmingUpPeriodStartsAt;
+        return currentTime > warmingUpPeriodStartsAt;
     }
 
     public void addToQueue(BooleanSupplier supplier) {
