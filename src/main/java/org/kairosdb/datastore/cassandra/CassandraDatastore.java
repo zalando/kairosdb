@@ -315,24 +315,21 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             }
 
             if (m_cacheWarmingUpConfiguration.isEnabled()) {
-                long now = System.currentTimeMillis();
-                int interval = m_cacheWarmingUpConfiguration.getHeatingIntervalMinutes();
                 final long nextRowTime = calculateRowTimeWrite(dataPoint.getTimestamp() + m_rowWidthWrite);
-                if (m_cacheWarmingUpLogic.shouldWarmingUpWork(now, nextRowTime, interval)) {
-                    final DataPointsRowKey nextBucketRowKey = new DataPointsRowKey(metricName, nextRowTime, dataPoint.getDataStoreDataType(), tags);
-                    final int rowKeyTtlFinal = rowKeyTtl;
-                    BooleanSupplier saver = () -> {
-                        final ByteBuffer serializeNextKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(nextBucketRowKey);
-                        if (!rowKeyCache.isKnown(serializeNextKey)) {
-                            storeRowKeyReverseLookups(metricName, nextRowTime, serializeNextKey, rowKeyTtlFinal, tags);
-                            rowKeyCache.put(serializeNextKey);
-                            m_nextRowKeyIndexRowsInserted.incrementAndGet();
-                            return true;
-                        }
-                        return false;
-                    };
-                    m_cacheWarmingUpLogic.addToQueue(saver);
-                }
+                m_cacheWarmingUpLogic.setNextBucketStartsAt(nextRowTime);
+                final DataPointsRowKey nextBucketRowKey = new DataPointsRowKey(metricName, nextRowTime, dataPoint.getDataStoreDataType(), tags);
+                final int rowKeyTtlFinal = rowKeyTtl;
+                BooleanSupplier saver = () -> {
+                    final ByteBuffer serializeNextKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(nextBucketRowKey);
+                    if (!rowKeyCache.isKnown(serializeNextKey)) {
+                        storeRowKeyReverseLookups(metricName, nextRowTime, serializeNextKey, rowKeyTtlFinal, tags);
+                        rowKeyCache.put(serializeNextKey);
+                        m_nextRowKeyIndexRowsInserted.incrementAndGet();
+                        return true;
+                    }
+                    return false;
+                };
+                m_cacheWarmingUpLogic.addToQueue(saver);
             }
 
             int columnTime = getColumnName(rowTime, dataPoint.getTimestamp());

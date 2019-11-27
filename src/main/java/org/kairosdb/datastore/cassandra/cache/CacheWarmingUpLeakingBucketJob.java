@@ -46,6 +46,10 @@ public class CacheWarmingUpLeakingBucketJob implements KairosDBJob {
     public void execute(final JobExecutionContext ctx) {
         logger.warn(String.format("Refill bucket from %d to %d", leakingBucketHolder.getLeakingBucket().get(), config.getWarmingUpInsertsPerSecond()));
         leakingBucketHolder.refillBucket(config.getWarmingUpInsertsPerSecond());
-        logic.runWarmingUp(leakingBucketHolder.getLeakingBucket());
+        long now = System.currentTimeMillis();
+        int interval = config.getHeatingIntervalMinutes();
+        if (logic.shouldWarmingUpWork(now, interval)) {
+            logic.runWarmingUp(leakingBucketHolder.getLeakingBucket());
+        }
     }
 }
