@@ -50,6 +50,8 @@ public class CacheWarmingUpLeakingBucketJob implements KairosDBJob {
         int interval = config.getHeatingIntervalMinutes();
         if (logic.shouldWarmingUpWork(now, interval)) {
             logic.runWarmingUp(leakingBucketHolder.getLeakingBucket());
+        } else {
+            logger.warn("Currently we are not warming up");
         }
     }
 }
