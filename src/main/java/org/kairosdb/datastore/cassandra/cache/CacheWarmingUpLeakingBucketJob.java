@@ -20,14 +20,17 @@ public class CacheWarmingUpLeakingBucketJob implements KairosDBJob {
 
     private final CacheWarmingUpLeakingBucketHolder leakingBucketHolder;
     private final CacheWarmingUpConfiguration config;
+    private final CacheWarmingUpLogic logic;
     private final String schedule;
 
     @Inject
     public CacheWarmingUpLeakingBucketJob(final CacheWarmingUpLeakingBucketHolder leakingBucketHolder,
                                           final CacheWarmingUpConfiguration config,
+                                          final CacheWarmingUpLogic logic,
                                           @Named("kairosdb.cache.warmup.leaking.bucket.refill.schedule") final String schedule) {
         this.leakingBucketHolder = leakingBucketHolder;
         this.config = config;
+        this.logic = logic;
         this.schedule = schedule;
     }
 
@@ -43,5 +46,6 @@ public class CacheWarmingUpLeakingBucketJob implements KairosDBJob {
     public void execute(final JobExecutionContext ctx) {
         logger.warn(String.format("Refill bucket from %d to %d", leakingBucketHolder.getLeakingBucket().get(), config.getWarmingUpInsertsPerSecond()));
         leakingBucketHolder.refillBucket(config.getWarmingUpInsertsPerSecond());
+        logic.runWarmingUp(leakingBucketHolder.getLeakingBucket());
     }
 }

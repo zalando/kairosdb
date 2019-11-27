@@ -48,6 +48,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -316,19 +317,21 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             if (m_cacheWarmingUpConfiguration.isEnabled()) {
                 long now = System.currentTimeMillis();
                 int interval = m_cacheWarmingUpConfiguration.getHeatingIntervalMinutes();
-                int rowSize = m_cacheWarmingUpConfiguration.getRowIntervalMinutes();
                 final long nextRowTime = calculateRowTimeWrite(dataPoint.getTimestamp() + m_rowWidthWrite);
-                final DataPointsRowKey nextBucketRowKey = new DataPointsRowKey(metricName, nextRowTime, dataPoint.getDataStoreDataType(), tags);
-                boolean isWarmingUpNeeded = m_cacheWarmingUpConfiguration.isUseRPS()
-                        ? m_cacheWarmingUpLogic.isWarmingUpNeeded(m_cacheWarmingUpLeakingBucketHolder.getLeakingBucket())
-                        : m_cacheWarmingUpLogic.isWarmingUpNeeded(nextBucketRowKey.hashCode(), now, nextRowTime, interval, rowSize);
-                if (isWarmingUpNeeded) {
-                    final ByteBuffer serializeNextKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(nextBucketRowKey);
-                    if (!rowKeyCache.isKnown(serializeNextKey)) {
-                        storeRowKeyReverseLookups(metricName, nextRowTime, serializeNextKey, rowKeyTtl, tags);
-                        rowKeyCache.put(serializeNextKey);
-                        m_nextRowKeyIndexRowsInserted.incrementAndGet();
-                    }
+                if (m_cacheWarmingUpLogic.shouldWarmingUpWork(now, nextRowTime, interval)) {
+                    final DataPointsRowKey nextBucketRowKey = new DataPointsRowKey(metricName, nextRowTime, dataPoint.getDataStoreDataType(), tags);
+                    final int rowKeyTtlFinal = rowKeyTtl;
+                    BooleanSupplier saver = () -> {
+                        final ByteBuffer serializeNextKey = DATA_POINTS_ROW_KEY_SERIALIZER.toByteBuffer(nextBucketRowKey);
+                        if (!rowKeyCache.isKnown(serializeNextKey)) {
+                            storeRowKeyReverseLookups(metricName, nextRowTime, serializeNextKey, rowKeyTtlFinal, tags);
+                            rowKeyCache.put(serializeNextKey);
+                            m_nextRowKeyIndexRowsInserted.incrementAndGet();
+                            return true;
+                        }
+                        return false;
+                    };
+                    m_cacheWarmingUpLogic.addToQueue(saver);
                 }
             }
 
