@@ -342,7 +342,9 @@ public class MetricsResource implements KairosMetricReporter {
 					new FileStreamingOutput(respFile));
 
 			setHeaders(responseBuilder);
-			return responseBuilder.build();
+			Response response = responseBuilder.build();
+			respFile.delete();
+			return response;
 		} catch (JsonSyntaxException e) {
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			Tags.ERROR.set(span, Boolean.TRUE);
@@ -481,7 +483,9 @@ public class MetricsResource implements KairosMetricReporter {
 							new FileStreamingOutput(respFile));
 
 					setHeaders(responseBuilder);
-					return responseBuilder.build();
+					Response response = responseBuilder.build();
+					respFile.delete();
+					return response;
 				}
 
 			}, m_readTimeout, TimeUnit.MILLISECONDS, true);
