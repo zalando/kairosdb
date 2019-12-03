@@ -342,9 +342,7 @@ public class MetricsResource implements KairosMetricReporter {
 					new FileStreamingOutput(respFile));
 
 			setHeaders(responseBuilder);
-			Response response = responseBuilder.build();
-			respFile.delete();
-			return response;
+			return responseBuilder.build();
 		} catch (JsonSyntaxException e) {
 			JsonResponseBuilder builder = new JsonResponseBuilder(Response.Status.BAD_REQUEST);
 			Tags.ERROR.set(span, Boolean.TRUE);
@@ -415,7 +413,6 @@ public class MetricsResource implements KairosMetricReporter {
 		checkNotNull(json);
 		logger.debug(json);
 
-
 		final Span span = createSpan("datapoints_query", httpHeaders);
 		try (Scope scope = tracer.scopeManager().activate(span)) {
 			File respFile = File.createTempFile("kairos", ".json", new File(datastore.getCacheDir()));
@@ -427,7 +424,9 @@ public class MetricsResource implements KairosMetricReporter {
 			return limiter.callWithTimeout(() -> {
 				try (Scope internalScope = tracer.scopeManager().activate(span)) {
 
-					for (QueryMetric query : queries) {
+				    StringBuilder httpResponse = new StringBuilder();
+
+				    for (QueryMetric query : queries) {
 						Map<String, Collection<String>> tags = query.getTags().asMap();
 						Set<String> keys = tags.keySet();
 
@@ -450,6 +449,7 @@ public class MetricsResource implements KairosMetricReporter {
 
 						DatastoreQuery dq = null;
 						int sampleSize = 0;
+
 						try {
 							List<DataPointGroup> results;
 							if (query.isRejected()) {
@@ -460,7 +460,7 @@ public class MetricsResource implements KairosMetricReporter {
 								results = dq.execute();
 								sampleSize = dq.getSampleSize();
 							}
-							jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize);
+							httpResponse.append(jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize));
 						} catch (Throwable e) {
 							queryMeasurementProvider.measureSpanError(query);
 							queryMeasurementProvider.measureDistanceError(query);
@@ -481,11 +481,12 @@ public class MetricsResource implements KairosMetricReporter {
 
 					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 							new FileStreamingOutput(respFile));
+					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
+                    span.setTag("response_size_mb", httpResponse.toString().getBytes().length);
+                    logger.warn("Query result: {}", httpResponse.toString());
 
 					setHeaders(responseBuilder);
-					Response response = responseBuilder.build();
-					respFile.delete();
-					return response;
+                    return responseBuilder.build();
 				}
 
 			}, m_readTimeout, TimeUnit.MILLISECONDS, true);

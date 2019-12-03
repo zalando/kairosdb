@@ -59,7 +59,7 @@ public class JsonResponse
 	 * @param sampleSize   Passing a sample size of -1 will cause the attribute to not show up
 	 * @throws FormatterException
 	 */
-	public void formatQuery(List<DataPointGroup> queryResults, boolean excludeTags, int sampleSize) throws FormatterException
+	public String formatQuery(List<DataPointGroup> queryResults, boolean excludeTags, int sampleSize) throws FormatterException
 	{
 		try
 		{
@@ -135,6 +135,7 @@ public class JsonResponse
 			}
 
 			m_jsonWriter.endArray().endObject();
+			return m_jsonWriter.toString();
 		}
 		catch (JSONException e)
 		{
