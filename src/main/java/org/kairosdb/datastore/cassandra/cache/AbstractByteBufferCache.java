@@ -22,7 +22,7 @@ public abstract class AbstractByteBufferCache {
     private static final int XX_SEED = 0xCAFEBABE;
 
     @VisibleForTesting
-    final Cache<BigInteger, Object> internalCache;
+    private final Cache<BigInteger, Boolean> internalCache;
 
     @VisibleForTesting
     AbstractByteBufferCache(final CacheMetricsProvider cacheMetricsProvider,
@@ -50,7 +50,7 @@ public abstract class AbstractByteBufferCache {
 
     public void put(@Nonnull final ByteBuffer key) {
         final BigInteger hash = doubleHash(key);
-        this.internalCache.put(hash, key);
+        this.internalCache.put(hash, Boolean.TRUE);
     }
 
     public boolean isKnown(final ByteBuffer key) {
