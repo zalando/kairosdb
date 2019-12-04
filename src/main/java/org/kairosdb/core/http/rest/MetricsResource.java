@@ -480,16 +480,16 @@ public class MetricsResource implements KairosMetricReporter {
 					}
 
 				    httpResponse.put("queries", queryResults);
-					span.setTag("response_size_mb", httpResponse.toString().getBytes().length);
+					span.setTag("response_size_bytes", httpResponse.toString().getBytes().length);
 					logger.warn("Query result: {}", httpResponse.toString());
-					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
+					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
 
 					jsonResponse.end();
 					writer.flush();
 					writer.close();
 
-					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
-							new FileStreamingOutput(respFile));
+					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
+					//		new FileStreamingOutput(respFile));
 					setHeaders(responseBuilder);
                     return responseBuilder.build();
 				}
