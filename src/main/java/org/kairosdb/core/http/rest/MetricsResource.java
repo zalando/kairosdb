@@ -32,6 +32,8 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
@@ -424,7 +426,9 @@ public class MetricsResource implements KairosMetricReporter {
 			return limiter.callWithTimeout(() -> {
 				try (Scope internalScope = tracer.scopeManager().activate(span)) {
 
-				    StringBuilder httpResponse = new StringBuilder();
+				    //StringBuilder httpResponse = new StringBuilder();
+					JSONObject httpResponse = new JSONObject();
+					JSONArray queryResults = new JSONArray();
 
 				    for (QueryMetric query : queries) {
 						Map<String, Collection<String>> tags = query.getTags().asMap();
@@ -460,7 +464,7 @@ public class MetricsResource implements KairosMetricReporter {
 								results = dq.execute();
 								sampleSize = dq.getSampleSize();
 							}
-							httpResponse.append(jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize));
+							queryResults.put(jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize));
 						} catch (Throwable e) {
 							queryMeasurementProvider.measureSpanError(query);
 							queryMeasurementProvider.measureDistanceError(query);
@@ -475,16 +479,17 @@ public class MetricsResource implements KairosMetricReporter {
 						}
 					}
 
+				    httpResponse.put("queries", queryResults);
+					span.setTag("response_size_mb", httpResponse.toString().getBytes().length);
+					logger.warn("Query result: {}", httpResponse.toString());
+					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
+
 					jsonResponse.end();
 					writer.flush();
 					writer.close();
 
 					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
 							new FileStreamingOutput(respFile));
-					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
-                    span.setTag("response_size_mb", httpResponse.toString().getBytes().length);
-                    logger.warn("Query result: {}", httpResponse.toString());
-
 					setHeaders(responseBuilder);
                     return responseBuilder.build();
 				}

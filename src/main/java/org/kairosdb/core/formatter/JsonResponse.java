@@ -16,7 +16,9 @@
 
 package org.kairosdb.core.formatter;
 
+import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.json.JSONWriter;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.datastore.DataPointGroup;
@@ -24,7 +26,6 @@ import org.kairosdb.core.groupby.GroupByResult;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class JsonResponse
@@ -59,27 +60,34 @@ public class JsonResponse
 	 * @param sampleSize   Passing a sample size of -1 will cause the attribute to not show up
 	 * @throws FormatterException
 	 */
-	public String formatQuery(List<DataPointGroup> queryResults, boolean excludeTags, int sampleSize) throws FormatterException
+	public JSONObject formatQuery(List<DataPointGroup> queryResults, boolean excludeTags, int sampleSize) throws FormatterException
 	{
 		try
 		{
+			JSONObject query = new JSONObject();
 			m_jsonWriter.object();
 
-			if (sampleSize != -1)
+			if (sampleSize != -1){
 				m_jsonWriter.key("sample_size").value(sampleSize);
+				query.put("sample_size", sampleSize);
+			}
 
 			m_jsonWriter.key("results").array();
+			JSONArray results = new JSONArray();
 
 			//This loop must call close on each group at the end.
 			for (DataPointGroup group : queryResults)
 			{
+				JSONObject result = new JSONObject();
 				final String metric = group.getName();
 
 				m_jsonWriter.object();
 				m_jsonWriter.key("name").value(metric);
+				result.put("name", metric);
 
 				if (!group.getGroupByResult().isEmpty())
 				{
+					JSONArray groupBy = new JSONArray();
 					m_jsonWriter.key("group_by");
 					m_jsonWriter.array();
 					boolean first = true;
@@ -88,30 +96,41 @@ public class JsonResponse
 						if (!first)
 							m_writer.write(",");
 						m_writer.write(groupByResult.toJson());
+						groupBy.put(groupByResult.toJson());
 						first = false;
 					}
 					m_jsonWriter.endArray();
+					result.put("group_by", groupBy);
 				}
 
 				if (!excludeTags)
 				{
+					JSONObject tags = new JSONObject();
 					m_jsonWriter.key("tags").object();
 
 					for (String tagName : group.getTagNames())
 					{
 						m_jsonWriter.key(tagName);
 						m_jsonWriter.value(group.getTagValues(tagName));
+						tags.put(tagName, group.getTagValues(tagName));
 					}
 					m_jsonWriter.endObject();
+					result.put("tags", tags);
 				}
 
 				m_jsonWriter.key("values").array();
 
-				while(group.hasNext()) {
-					DataPoint dataPoint = group.next();
+				JSONArray values = new JSONArray();
 
+				while(group.hasNext()) {
+					JSONArray value = new JSONArray();
+
+					DataPoint dataPoint = group.next();
 					m_jsonWriter.array().value(dataPoint.getTimestamp());
 					dataPoint.writeValueToJson(m_jsonWriter);
+
+					value.put(dataPoint.getTimestamp());
+					value.put(dataPoint.getDoubleValue());
 
 					/*if (dataPoint.isInteger())
 					{
@@ -127,15 +146,20 @@ public class JsonResponse
 						m_jsonWriter.value(value);
 					}*/
 					m_jsonWriter.endArray();
+
+					values.put(value);
 				}
+				result.put("values", values);
 				m_jsonWriter.endArray();
 				m_jsonWriter.endObject();
 
 				//Don't close the group the caller will do that.
-			}
 
+				results.put(result);
+			}
+			query.put("results", results);
 			m_jsonWriter.endArray().endObject();
-			return m_jsonWriter.toString();
+			return query;
 		}
 		catch (JSONException e)
 		{
