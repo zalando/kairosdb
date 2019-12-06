@@ -464,7 +464,8 @@ public class MetricsResource implements KairosMetricReporter {
 								results = dq.execute();
 								sampleSize = dq.getSampleSize();
 							}
-							queryResults.put(jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize));
+							jsonResponse.formatQuery(results, query.isExcludeTags(), sampleSize);
+							queryResults.put(jsonResponse.formatQueryToJSON(results, query.isExcludeTags(), sampleSize));
 						} catch (Throwable e) {
 							queryMeasurementProvider.measureSpanError(query);
 							queryMeasurementProvider.measureDistanceError(query);
@@ -482,14 +483,16 @@ public class MetricsResource implements KairosMetricReporter {
 				    httpResponse.put("queries", queryResults);
 					span.setTag("response_size_bytes", httpResponse.toString().getBytes().length);
 					logger.warn("Query result: {}", httpResponse.toString());
-					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse);
+					// TODO: Enable below line to use in-memory JSON response building
+					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(httpResponse.toString());
 
 					jsonResponse.end();
 					writer.flush();
 					writer.close();
 
-					//ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
-					//		new FileStreamingOutput(respFile));
+					// TODO: Remove below line to disable caching of Response in JSON file
+					ResponseBuilder responseBuilder = Response.status(Response.Status.OK).entity(
+							new FileStreamingOutput(respFile));
 					setHeaders(responseBuilder);
                     return responseBuilder.build();
 				}

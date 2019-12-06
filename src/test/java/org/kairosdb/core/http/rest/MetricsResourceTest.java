@@ -24,6 +24,7 @@ import com.google.inject.*;
 import com.google.inject.name.Names;
 import io.opentracing.Tracer;
 import io.opentracing.util.GlobalTracer;
+import org.json.JSONException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -212,16 +213,18 @@ public class MetricsResourceTest
 	}
 
 	@Test
-	public void testQuery() throws IOException
+	public void testQuery() throws IOException, JSONException
 	{
 		String json = Resources.toString(Resources.getResource("query-metric-absolute-dates.json"), Charsets.UTF_8);
-
 		JsonResponse response = client.post(json, GET_METRIC_URL);
 
-		assertResponse(response, 200,
-				"{\"queries\":" +
-						"[{\"sample_size\":10,\"results\":" +
-						"[{\"name\":\"abc.123\",\"group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"server\":[\"server1\",\"server2\"]},\"values\":[[1,60.2],[2,30.200000000000003],[3,20.1]]}]}]}");
+		String expectedContent = "{\"queries\":" +
+				"[{\"sample_size\":10,\"results\":" +
+				"[{\"name\":\"abc.123\",\"group_by\":[{\"name\":\"type\",\"type\":\"number\"}],\"tags\":{\"server\":[\"server1\",\"server2\"]},\"values\":[[1,60.2],[2,30.200000000000003],[3,20.1]]}]}]}";
+
+		//		JSONAssert.assertEquals(response.getJson().toString(),expectedContent, JSONCompareMode.STRICT);
+
+		assertResponse(response, 200, expectedContent);
 	}
 
 	@Test
