@@ -781,7 +781,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
 
     private void checkReadRowsLimit(int readCount, int filteredCount, int limit, DatastoreMetricQuery query, String index) {
         if (readCount > limit) {
-            logLimitViolation(filteredCount, readCount, limit, query, index, m_readRowLimitExceededCount);
+            logLimitViolation(readCount, filteredCount, limit, query, index, m_readRowLimitExceededCount);
             throw new MaxRowKeysForQueryExceededException(
                     String.format("Exceeded limit: %d key rows read by KDB. Metric: %s", limit, query.getName()));
         }
@@ -798,11 +798,11 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     private static void logLimitViolation(int readCount, int filteredCount, int limit, DatastoreMetricQuery query, String index, AtomicLong counter) {
         Span span = GlobalTracer.get().activeSpan();
         if (span != null) {
-            span.setTag("row_count", filteredCount);
+            span.setTag("read_count", readCount);
+            span.setTag("filtered_count", filteredCount);
             span.setTag("max_row_keys", Boolean.TRUE);
         }
-
-        logQuery(query, filteredCount, readCount, true, limit, index);
+        logQuery(query, readCount, filteredCount, true, limit, index);
         counter.incrementAndGet();
     }
 
