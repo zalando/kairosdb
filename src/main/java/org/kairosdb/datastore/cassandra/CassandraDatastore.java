@@ -204,7 +204,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     }
 
     private void setupSchema() {
-        CassandraSetup setup = null;
+        CassandraSetup setup;
 
         try (Session session = m_cassandraClient.getSession()) {
             ResultSet rs = session.execute("SELECT release_version FROM system.local");
@@ -218,11 +218,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             }
         }
 
-        if (null != setup) {
-            setup.initSchema();
-        } else {
-            logger.info("Cassandra Setup not performed");
-        }
+        setup.initSchema();
     }
 
     private List<String> parseIndexTagList(final String indexTagList) {
@@ -457,7 +453,8 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     }
 
     private void queryWithRowKeys(DatastoreMetricQuery query,
-                                  QueryCallback queryCallback, Collection<DataPointsRowKey> rowKeys) {
+                                  QueryCallback queryCallback,
+                                  Collection<DataPointsRowKey> rowKeys) {
         long currentTimeTier = 0L;
         String currentType = null;
 
@@ -1050,7 +1047,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         @Override
         public void startDataPointSet(String dataType, Map<String, String> tags) throws IOException {
             m_currentType = dataType;
-            m_currentTags = new TreeMap<String, String>(tags);
+            m_currentTags = new TreeMap<>(tags);
             //This causes the row key to get reset with the first data point
             m_currentRow = null;
         }
@@ -1058,5 +1055,18 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         @Override
         public void endDataPoints() {
         }
+    }
+
+    public void cacheWarmUp() {
+        final int limit = 1_000_000;
+        final long startTime = System.currentTimeMillis();
+        for (int i = 1; i < 25_000; i++) {
+            final String metricName = "zmon.check." + i;
+            final DatastoreMetricQuery query = new QueryMetric(startTime, 0, metricName);
+            final Collection<DataPointsRowKey> keys = getKeysForQueryIterator(query, limit);
+            keys.parallelStream().map(DATA_POINTS_ROW_KEY_SERIALIZER::toByteBuffer).forEach(rowKeyCache::put);
+            logger.info("Cached all {} keys for metric={}", keys.size(), metricName);
+        }
+        logger.info("Cache pre-warming finished.");
     }
 }
