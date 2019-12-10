@@ -1060,8 +1060,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     public void cacheWarmUp() {
         final int limit = 1_000_000;
         final long startTime = System.currentTimeMillis();
-        for (int i = 1; i < 25_000; i++) {
-            final String metricName = "zmon.check." + i;
+        for (String metricName : getMetricNames()) {
             final DatastoreMetricQuery query = new QueryMetric(startTime, 0, metricName);
             final Collection<DataPointsRowKey> keys = getKeysForQueryIterator(query, limit);
             keys.parallelStream().map(DATA_POINTS_ROW_KEY_SERIALIZER::toByteBuffer).forEach(rowKeyCache::put);
