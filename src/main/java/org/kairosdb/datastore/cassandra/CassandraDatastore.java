@@ -829,8 +829,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
 
         Span span = tracer.buildSpan("query_index").start();
 
-        try (Scope scope = tracer.scopeManager().activate(span, false)) {
-
+        try (Scope scope = tracer.scopeManager().activate(span)) {
             final List<String> indexTags = getIndexTags(query.getName());
             SetMultimap<String, String> filterTags = query.getTags();
             for (String split : indexTags) {
@@ -1064,7 +1063,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         final List<String> metricNames = (List<String>) getMetricNames();
         logger.info("Metric names queries: {}", metricNames.size());
         for (String metricName : metricNames) {
-            final DatastoreMetricQuery query = new QueryMetric(startTime, 0, metricName);
+            final DatastoreMetricQuery query = new QueryMetric(startTime - 1000, startTime, 0, metricName);
             final Collection<DataPointsRowKey> keys = getKeysForQueryIterator(query, limit);
             keys.stream().map(DATA_POINTS_ROW_KEY_SERIALIZER::toByteBuffer).forEach(rowKeyCache::put);
             logger.info("Cached all {} keys for metric={}", keys.size(), metricName);
