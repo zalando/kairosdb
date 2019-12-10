@@ -1058,12 +1058,15 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     }
 
     public void cacheWarmUp() {
+        logger.info("Cache warm up started");
         final int limit = 1_000_000;
         final long startTime = System.currentTimeMillis();
-        for (String metricName : getMetricNames()) {
+        final List<String> metricNames = (List<String>) getMetricNames();
+        logger.info("Metric names queries: {}", metricNames.size());
+        for (String metricName : metricNames) {
             final DatastoreMetricQuery query = new QueryMetric(startTime, 0, metricName);
             final Collection<DataPointsRowKey> keys = getKeysForQueryIterator(query, limit);
-            keys.parallelStream().map(DATA_POINTS_ROW_KEY_SERIALIZER::toByteBuffer).forEach(rowKeyCache::put);
+            keys.stream().map(DATA_POINTS_ROW_KEY_SERIALIZER::toByteBuffer).forEach(rowKeyCache::put);
             logger.info("Cached all {} keys for metric={}", keys.size(), metricName);
         }
         logger.info("Cache pre-warming finished.");
