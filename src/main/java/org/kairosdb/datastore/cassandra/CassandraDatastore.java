@@ -742,7 +742,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         return false;
     }
 
-    private void filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, int readRowsLimit, String index, boolean last) {
+    private int filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, String index) {
         final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
         final SetMultimap<String, String> filterTags = query.getTags();
         final SetMultimap<String, Pattern> tagPatterns = MultimapBuilder.hashKeys(filterTags.size()).hashSetValues().build();
@@ -753,7 +753,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         for (Row r : rs) {
             rowReadCount++;
 
-            checkReadRowsLimit(rowReadCount, readRowsLimit, query, filteredRowKeys, rowReadCount, index);
+            checkReadRowsLimit(rowReadCount, filteredRowKeys.size(), m_cassandraConfiguration.getMaxRowsForKeysQuery(), query, index);
 
             DataPointsRowKey key = keySerializer.fromByteBuffer(r.getBytes("column1"));
             Map<String, String> tags = key.getTags();
@@ -776,51 +776,39 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         query.setQueryLoggingType(isCriticalQuery ? "critical" : "simple");
         query.setLoggable(isCriticalQuery || random.nextInt(100) < m_cassandraConfiguration.getQuerySamplingPercentage());
 
-        if (last) {
-            final int filteredRowsLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
-            checkFilteredRowsLimit(filteredRowKeys.size(), filteredRowsLimit, query, filteredRowKeys, rowReadCount, index);
-        }
-
-        if (query.isLoggable()) {
-            logQuery(query, filteredRowKeys, rowReadCount, false, readRowsLimit, index);
-        }
+        return rowReadCount;
     }
 
-    private void checkReadRowsLimit(int size, int limit, DatastoreMetricQuery query,
-                                    List<DataPointsRowKey> filteredRowKeys, int rowReadCount, String index) {
-        if (size > limit) {
-            Span span = GlobalTracer.get().activeSpan();
-            if (span != null) {
-                span.setTag("row_count", size);
-                span.setTag("max_row_keys", Boolean.TRUE);
-            }
-
-            logQuery(query, filteredRowKeys, rowReadCount, true, limit, index);
-            m_readRowLimitExceededCount.incrementAndGet();
+    private void checkReadRowsLimit(int readCount, int filteredCount, int limit, DatastoreMetricQuery query, String index) {
+        if (readCount > limit) {
+            logLimitViolation(readCount, filteredCount, limit, query, index, m_readRowLimitExceededCount);
             throw new MaxRowKeysForQueryExceededException(
                     String.format("Exceeded limit: %d key rows read by KDB. Metric: %s", limit, query.getName()));
         }
     }
 
-    private void checkFilteredRowsLimit(int size, int limit, DatastoreMetricQuery query,
-                                        List<DataPointsRowKey> filteredRowKeys, int rowReadCount, String index) {
-        if (size > limit) {
-            Span span = GlobalTracer.get().activeSpan();
-            if (span != null) {
-                span.setTag("row_count", size);
-                span.setTag("max_row_keys", Boolean.TRUE);
-            }
-
-            logQuery(query, filteredRowKeys, rowReadCount, true, limit, index);
-            m_filteredRowLimitExceededCount.incrementAndGet();
+    private void checkFilteredRowsLimit(int readCount, int filteredCount, int limit, DatastoreMetricQuery query, String index) {
+        if (filteredCount > limit) {
+            logLimitViolation(readCount, filteredCount, limit, query, index, m_filteredRowLimitExceededCount);
             throw new MaxRowKeysForQueryExceededException(
                     String.format("Exceeded limit: %d data point partitions read by KDB. Metric: %s", limit, query.getName()));
         }
     }
 
+    private static void logLimitViolation(int readCount, int filteredCount, int limit, DatastoreMetricQuery query, String index, AtomicLong counter) {
+        Span span = GlobalTracer.get().activeSpan();
+        if (span != null) {
+            span.setTag("read_count", readCount);
+            span.setTag("filtered_count", filteredCount);
+            span.setTag("max_row_keys", Boolean.TRUE);
+        }
+        logQuery(query, readCount, filteredCount, true, limit, index);
+        counter.incrementAndGet();
+    }
+
     private static void logQuery(DatastoreMetricQuery query,
-                                 Collection<DataPointsRowKey> filteredRowKeys,
-                                 int rowReadCount,
+                                 int readCount,
+                                 int filteredCount,
                                  boolean limitExceeded,
                                  int limit,
                                  String index) {
@@ -828,7 +816,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         final long duration = query.getEndTime() - query.getStartTime();
         logger.warn("{}_query: uuid={} metric={} query={} read={} filtered={} start_time={} end_time={} duration={} " +
                         "is_until_now={} exceeded={} limit={} index={}", query.getQueryLoggingType(),
-                query.getQueryUUID(), query.getName(), query.getTags(), rowReadCount, filteredRowKeys.size(),
+                query.getQueryUUID(), query.getName(), query.getTags(), readCount, filteredCount,
                 query.getStartTime(), query.getEndTime(), duration, isUntilNow, limitExceeded, limit, index);
     }
 
@@ -917,10 +905,20 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             span.setTag("buckets", futures.size());
         }
 
+        int readCount = 0;
         for (ResultSetFuture future : futures) {
-            ResultSet rs = future.getUninterruptibly();
-            filterAndAddKeys(query, rs, rowKeys, m_cassandraConfiguration.getMaxRowsForKeysQuery(), index, true);
+            final ResultSet rs = future.getUninterruptibly();
+            readCount += filterAndAddKeys(query, rs, rowKeys, index);
+
+            final int filteredLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
+            checkFilteredRowsLimit(readCount, rowKeys.size(), filteredLimit, query, index);
         }
+
+        if (query.isLoggable()) {
+            final int readLimit = m_cassandraConfiguration.getMaxRowsForKeysQuery();
+            logQuery(query, rowKeys.size(), readCount, false, readLimit, index);
+        }
+
         return rowKeys;
     }
 
