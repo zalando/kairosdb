@@ -742,7 +742,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         return false;
     }
 
-    private int filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, int readRowsLimit, String index, boolean last) {
+    private int filterAndAddKeys(DatastoreMetricQuery query, ResultSet rs, List<DataPointsRowKey> filteredRowKeys, String index) {
         final DataPointsRowKeySerializer keySerializer = new DataPointsRowKeySerializer();
         final SetMultimap<String, String> filterTags = query.getTags();
         final SetMultimap<String, Pattern> tagPatterns = MultimapBuilder.hashKeys(filterTags.size()).hashSetValues().build();
@@ -753,7 +753,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         for (Row r : rs) {
             rowReadCount++;
 
-            checkReadRowsLimit(rowReadCount, filteredRowKeys.size(), readRowsLimit, query, index);
+            checkReadRowsLimit(rowReadCount, filteredRowKeys.size(), m_cassandraConfiguration.getMaxRowsForKeysQuery(), query, index);
 
             DataPointsRowKey key = keySerializer.fromByteBuffer(r.getBytes("column1"));
             Map<String, String> tags = key.getTags();
@@ -906,16 +906,16 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         }
 
         int readCount = 0;
-        final int readLimit = m_cassandraConfiguration.getMaxRowsForKeysQuery();
         for (ResultSetFuture future : futures) {
             final ResultSet rs = future.getUninterruptibly();
-            readCount += filterAndAddKeys(query, rs, rowKeys, readLimit, index, true);
+            readCount += filterAndAddKeys(query, rs, rowKeys, index);
 
             final int filteredLimit = m_cassandraConfiguration.getMaxRowKeysForQuery();
             checkFilteredRowsLimit(readCount, rowKeys.size(), filteredLimit, query, index);
         }
 
         if (query.isLoggable()) {
+            final int readLimit = m_cassandraConfiguration.getMaxRowsForKeysQuery();
             logQuery(query, rowKeys.size(), readCount, false, readLimit, index);
         }
 
