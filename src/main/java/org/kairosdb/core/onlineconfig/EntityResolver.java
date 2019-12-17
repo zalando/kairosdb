@@ -44,28 +44,27 @@ public class EntityResolver {
     }
 
     public Optional<Integer> getIntValue(JsonNode dataNode, String key) {
-        if (dataNode == null) {
-            logger.debug("No data node provided");
-            return Optional.empty();
-        }
-        JsonNode intNode = dataNode.get(key);
-        if (intNode == null) {
-            logger.debug(String.format("There is no node for key '%s'", key));
-            return Optional.empty();
-        }
-        return Optional.of(intNode.asInt());
+        return getChild(dataNode, key).map(JsonNode::asInt);
     }
 
     public Optional<Boolean> getBooleanValue(JsonNode dataNode, String key) {
+        return getChild(dataNode, key).map(JsonNode::asBoolean);
+    }
+
+    public Optional<String> getStringValue(JsonNode dataNode, String key) {
+        return getChild(dataNode, key).map(JsonNode::asText);
+    }
+
+    private Optional<JsonNode> getChild(JsonNode dataNode, String key) {
         if (dataNode == null) {
             logger.debug("No data node provided");
             return Optional.empty();
         }
-        JsonNode intNode = dataNode.get(key);
-        if (intNode == null) {
+        JsonNode child = dataNode.get(key);
+        if (child == null) {
             logger.debug(String.format("There is no node for key '%s'", key));
             return Optional.empty();
         }
-        return Optional.of(intNode.asBoolean());
+        return Optional.of(child);
     }
 }
