@@ -426,6 +426,9 @@ public class KairosDatastore {
                 } catch (Exception e) {
                     throw new DatastoreException(e);
                 }
+                finally {
+                    cachedResults.decrementClose();
+                }
 
                 //Get data point count
                 for (DataPointRow returnedRow : returnedRows) {
