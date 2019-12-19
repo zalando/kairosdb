@@ -422,8 +422,10 @@ public class KairosDatastore {
                         returnedRows = cachedResults.getRows();
                     }
                 } catch (MaxRowKeysForQueryExceededException e) {
+                    cachedResults.decrementClose();
                     throw e;
                 } catch (Exception e) {
+                    cachedResults.decrementClose();
                     throw new DatastoreException(e);
                 }
 
