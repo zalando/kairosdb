@@ -422,12 +422,11 @@ public class KairosDatastore {
                         returnedRows = cachedResults.getRows();
                     }
                 } catch (MaxRowKeysForQueryExceededException e) {
+                    cachedResults.decrementClose();
                     throw e;
                 } catch (Exception e) {
-                    throw new DatastoreException(e);
-                }
-                finally {
                     cachedResults.decrementClose();
+                    throw new DatastoreException(e);
                 }
 
                 //Get data point count
