@@ -172,8 +172,6 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         m_cacheWarmingUpLogic = cacheWarmingUpLogic;
         m_cacheWarmingUpConfiguration = cacheWarmingUpConfiguration;
 
-        setupSchema();
-
         m_session = m_cassandraClient.getKeyspaceSession();
 
         m_psInsertData = m_session.prepare(DATA_POINTS_INSERT).setConsistencyLevel(cassandraConfiguration.getDataWriteLevelDataPoint());
@@ -201,28 +199,6 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
 
     public long getRowWidthWrite() {
         return m_rowWidthWrite;
-    }
-
-    private void setupSchema() {
-        CassandraSetup setup = null;
-
-        try (Session session = m_cassandraClient.getSession()) {
-            ResultSet rs = session.execute("SELECT release_version FROM system.local");
-            final String version = rs.all().get(0).getString(0);
-            if (version.startsWith("3")) {
-                logger.info("Selecting V3 Cassandra Schema Setup");
-                setup = new CassandraSetupV3(m_cassandraClient, m_cassandraConfiguration.getKeyspaceName(), m_cassandraConfiguration.getReplicationFactor());
-            } else {
-                logger.info("Selecting V2 Cassandra Schema Setup");
-                setup = new CassandraSetupV2(m_cassandraClient, m_cassandraConfiguration.getKeyspaceName(), m_cassandraConfiguration.getReplicationFactor());
-            }
-        }
-
-        if (null != setup) {
-            setup.initSchema();
-        } else {
-            logger.info("Cassandra Setup not performed");
-        }
     }
 
     private List<String> parseIndexTagList(final String indexTagList) {
