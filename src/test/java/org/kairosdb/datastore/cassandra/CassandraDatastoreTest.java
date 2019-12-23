@@ -23,7 +23,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.kairosdb.core.*;
+import org.kairosdb.core.DataPoint;
+import org.kairosdb.core.DataPointSet;
+import org.kairosdb.core.KairosDataPointFactory;
+import org.kairosdb.core.TestDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPoint;
 import org.kairosdb.core.datapoints.LongDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
@@ -51,8 +54,8 @@ import static org.mockito.Mockito.mock;
 
 @Ignore
 public class CassandraDatastoreTest extends DatastoreTestHelper {
-    public static final String ROW_KEY_TEST_METRIC = "row_key_test_metric";
-    public static final String ROW_KEY_BIG_METRIC = "row_key_big_metric";
+    private static final String ROW_KEY_TEST_METRIC = "row_key_test_metric";
+    private static final String ROW_KEY_BIG_METRIC = "row_key_big_metric";
 
     private static final int MAX_ROW_READ_SIZE = 1024;
     private static final int OVERFLOW_SIZE = MAX_ROW_READ_SIZE * 2 + 10;
@@ -62,7 +65,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
     private static Random random = new Random();
     private static CassandraDatastore s_datastore;
     private static long s_dataPointTime;
-    public static final HashMultimap<String, String> EMPTY_MAP = HashMultimap.create();
+    private static final HashMultimap<String, String> EMPTY_MAP = HashMultimap.create();
     private static MockTracer tracer = new MockTracer();
 
     private static void putDataPoints(DataPointSet dps) throws DatastoreException {
@@ -185,8 +188,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
         System.out.println("Starting Cassandra Connection: " + cassandraHost);
 
-        CassandraConfiguration cassandraConfig = new CassandraConfiguration(1, MAX_ROW_READ_SIZE, MAX_ROW_READ_SIZE, MAX_ROW_READ_SIZE,
-                1000, 50000, cassandraHost, "kairosdb_test");
+        CassandraConfiguration cassandraConfig = new CassandraConfiguration(1, cassandraHost, "kairosdb_test");
 
         // TODO: test the caches being hit
         final StringKeyCache stringCache = mock(StringKeyCache.class);
@@ -196,7 +198,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
         System.out.println("Creating KairosDataStore");
         DatastoreTestHelper.s_datastore = new KairosDatastore(s_datastore,
                 new QueryQueuingManager(1, "hostname"),
-                Collections.<DataPointListener>emptyList(), dataPointFactory, tracer);
+                Collections.emptyList(), dataPointFactory, tracer);
 
         System.out.println("Loading Cassandra data");
         loadCassandraData();
@@ -206,7 +208,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
     }
 
     @AfterClass
-    public static void closeDatastore() throws InterruptedException, IOException, DatastoreException {
+    public static void closeDatastore() {
         for (String metricName : metricNames) {
             deleteMetric(metricName);
         }
@@ -214,15 +216,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
         s_datastore.close();
     }
 
-    private static List<DataPointsRowKey> readIterator(Iterator<DataPointsRowKey> it) {
-        List<DataPointsRowKey> ret = new ArrayList<>();
-        while (it.hasNext())
-            ret.add(it.next());
-
-        return (ret);
-    }
-
-    private static void deleteMetric(String metricName) throws IOException, DatastoreException {
+    private static void deleteMetric(String metricName) {
         DatastoreMetricQueryImpl query = new DatastoreMetricQueryImpl(metricName, EMPTY_MAP, 0L, Long.MAX_VALUE);
         s_datastore.deleteDataPoints(query);
     }
@@ -230,7 +224,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
     @Test
     public void test_getKeysForQuery() {
         DatastoreMetricQuery query = new DatastoreMetricQueryImpl(ROW_KEY_TEST_METRIC,
-                HashMultimap.<String, String>create(), s_dataPointTime, s_dataPointTime);
+                HashMultimap.create(), s_dataPointTime, s_dataPointTime);
 
         Collection<DataPointsRowKey> keys = s_datastore.getKeysForQueryIterator(query);
 
@@ -252,7 +246,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
     @Test
     public void test_rowLargerThanMaxReadSize() throws DatastoreException {
-        Map<String, String> tagFilter = new HashMap<String, String>();
+        Map<String, String> tagFilter = new HashMap<>();
         tagFilter.put("host", "E");
 
         QueryMetric query = new QueryMetric(s_dataPointTime - OVERFLOW_SIZE, 0, ROW_KEY_BIG_METRIC);
@@ -278,13 +272,13 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
     }
 
     @Test(expected = NullPointerException.class)
-    public void test_deleteDataPoints_nullQuery_Invalid() throws IOException, DatastoreException {
+    public void test_deleteDataPoints_nullQuery_Invalid() {
         s_datastore.deleteDataPoints(null);
     }
 
     @Ignore
     @Test
-    public void test_deleteDataPoints_DeleteEntireRow() throws IOException, DatastoreException, InterruptedException {
+    public void test_deleteDataPoints_DeleteEntireRow() throws IOException, InterruptedException {
         String metricToDelete = "MetricToDelete";
         DatastoreMetricQuery query = new DatastoreMetricQueryImpl(metricToDelete, EMPTY_MAP, Long.MIN_VALUE, Long.MAX_VALUE);
 
@@ -313,7 +307,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
     @Ignore
     @Test
-    public void test_deleteDataPoints_DeleteColumnsSpanningRows() throws IOException, DatastoreException, InterruptedException {
+    public void test_deleteDataPoints_DeleteColumnsSpanningRows() throws IOException, InterruptedException {
         String metricToDelete = "OtherMetricToDelete";
         DatastoreMetricQuery query = new DatastoreMetricQueryImpl(metricToDelete, EMPTY_MAP, Long.MIN_VALUE, Long.MAX_VALUE);
 
@@ -341,7 +335,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
     @Ignore
     @Test
-    public void test_deleteDataPoints_DeleteColumnsSpanningRows_rowsLeft() throws IOException, DatastoreException, InterruptedException {
+    public void test_deleteDataPoints_DeleteColumnsSpanningRows_rowsLeft() throws IOException, InterruptedException {
         long rowKeyTime = s_datastore.calculateRowTimeRead(s_dataPointTime);
         String metricToDelete = "MetricToPartiallyDelete";
         DatastoreMetricQuery query = new DatastoreMetricQueryImpl(metricToDelete, EMPTY_MAP, 0L, Long.MAX_VALUE);
@@ -372,7 +366,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
     @Ignore
     @Test
-    public void test_deleteDataPoints_DeleteColumnWithinRow() throws IOException, DatastoreException, InterruptedException {
+    public void test_deleteDataPoints_DeleteColumnWithinRow() throws IOException, InterruptedException {
         long rowKeyTime = s_datastore.calculateRowTimeRead(s_dataPointTime);
         String metricToDelete = "YetAnotherMetricToDelete";
         DatastoreMetricQuery query = new DatastoreMetricQueryImpl(metricToDelete, EMPTY_MAP, rowKeyTime, rowKeyTime + 2000);
@@ -401,19 +395,17 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
     /**
      * This is here because hbase throws an exception in this case
-     *
-     * @throws DatastoreException
      */
     @Test
     public void test_queryDatabase_noMetric() throws DatastoreException {
 
-        Map<String, String> tags = new TreeMap<String, String>();
+        Map<String, String> tags = new TreeMap<>();
         QueryMetric query = new QueryMetric(500, 0, "metric_not_there");
         query.setEndTime(3000);
 
         query.setTags(tags);
 
-        DatastoreQuery dq = super.s_datastore.createQuery(query);
+        DatastoreQuery dq = DatastoreTestHelper.s_datastore.createQuery(query);
 
         List<DataPointGroup> results = dq.execute();
 
@@ -464,7 +456,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
 
         query.setTags(tags);
 
-        DatastoreQuery dq = super.s_datastore.createQuery(query);
+        DatastoreQuery dq = DatastoreTestHelper.s_datastore.createQuery(query);
 
         List<DataPointGroup> results = dq.execute();
         try {
