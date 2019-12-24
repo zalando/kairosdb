@@ -126,8 +126,10 @@ public class KairosDatastore {
 
 	@SuppressWarnings("ResultOfMethodCallIgnored")
 	private void cleanDirectory(File directory) {
-		if (!directory.exists())
+		if (!directory.exists()) {
+			logger.warn(String.format("There is no such path '%s'", directory.getAbsolutePath()));
 			return;
+		}
 		File[] list = directory.listFiles();
 
 		if (list != null && list.length > 0) {
@@ -148,6 +150,7 @@ public class KairosDatastore {
 
 		if (wait) {
 			try {
+				logger.warn("Sleep for 1 minute");
 				Thread.sleep(60000);
 			} catch (InterruptedException e) {
 				logger.error("Sleep interrupted:", e);
@@ -156,7 +159,7 @@ public class KairosDatastore {
 
 		logger.debug("Executing job...");
 		File dir = new File(oldCacheDir);
-		logger.debug("Deleting cache files in " + dir.getAbsolutePath());
+		logger.warn("Deleting cache files in " + dir.getAbsolutePath());
 
 		cleanDirectory(dir);
 	}
