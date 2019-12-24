@@ -124,7 +124,6 @@ public class KairosDatastore {
 		m_cacheDir = newCacheDir;
 	}
 
-	@SuppressWarnings("ResultOfMethodCallIgnored")
 	private void cleanDirectory(File directory) {
 		if (!directory.exists()) {
 			logger.warn(String.format("There is no such path '%s'", directory.getAbsolutePath()));
@@ -137,11 +136,15 @@ public class KairosDatastore {
 				if (aList.isDirectory())
 					cleanDirectory(aList);
 
-				aList.delete();
+				if (!aList.delete()) {
+					logger.error(String.format("Unable to delete file '%s'", aList.getAbsolutePath()));
+				}
 			}
 		}
 
-		directory.delete();
+		if (!directory.delete()) {
+			logger.error(String.format("Unable to delete directory '%s'", directory.getAbsolutePath()));
+		}
 	}
 
 	public void cleanCacheDir(boolean wait) {
