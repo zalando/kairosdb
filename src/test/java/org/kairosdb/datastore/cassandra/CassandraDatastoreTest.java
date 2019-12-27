@@ -191,7 +191,7 @@ public class CassandraDatastoreTest extends DatastoreTestHelper {
         // TODO: test the caches being hit
         final StringKeyCache stringCache = mock(StringKeyCache.class);
         s_datastore = new CassandraDatastore(new CassandraClientImpl(cassandraConfig), cassandraConfig,
-                dataPointFactory, longDataPointFactory, new CacheWarmingUpLogic(), new CacheWarmingUpConfiguration(), mock(RowKeyCache.class), stringCache, stringCache, tracer);
+                dataPointFactory, longDataPointFactory, new CacheWarmingUpLogic(), new CacheWarmingUpConfiguration(), new CassandraConsistencyLevelConfiguration(cassandraConfig), mock(RowKeyCache.class), stringCache, stringCache, tracer);
 
         System.out.println("Creating KairosDataStore");
         DatastoreTestHelper.s_datastore = new KairosDatastore(s_datastore,
