@@ -32,21 +32,9 @@ public class CassandraConfiguration {
 	private static final String CASSANDRA_MAX_ROWS_FOR_KEY_QUERY = "kairosdb.datastore.cassandra.max_rows_for_key_query";
 	private static final String CASSANDRA_INDEX_TAG_LIST = "kairosdb.datastore.cassandra.index_tag_list";
 	private static final String CASSANDRA_METRIC_INDEX_TAG_LIST = "kairosdb.datastore.cassandra.metric_index_tag_list";
-	private static final String NEW_SPLIT_INDEX_START_TIME_MS = "kairosdb.datastore.cassandra.new_split_index_start_time_ms";
-	private static final String USE_TIME_INDEX_READ = "kairosdb.datastore.cassandra.use_time_index_read";
-	private static final String USE_TIME_INDEX_WRITE = "kairosdb.datastore.cassandra.use_time_index_write";
 	private static final String HOST_LIST_PROPERTY = "kairosdb.datastore.cassandra.host_list";
 	private static final String CASSANDRA_PORT = "kairosdb.datastore.cassandra.port";
 	private static final String QUERY_SAMPLING_PERCENTAGE = "kairosdb.datastore.cassandra.query_sampling_percentage";
-	@Inject(optional = true)
-	@Named(USE_TIME_INDEX_READ)
-	private boolean m_useTimeIndexRead = false;
-	@Inject(optional = true)
-	@Named(USE_TIME_INDEX_WRITE)
-	private boolean m_useTimeIndexWrite = false;
-	@Inject(optional = true)
-	@Named(NEW_SPLIT_INDEX_START_TIME_MS)
-	private long m_newSplitIndexStartTimeMs = 0L;
 	@Inject(optional=true)
 	@Named(CASSANDRA_INDEX_TAG_LIST)
 	private String m_indexTagList = "key,application_id,stack_name";
@@ -123,34 +111,13 @@ public class CassandraConfiguration {
 	@Named(QUERY_SAMPLING_PERCENTAGE)
 	private int querySamplingPercentage = 20;
 
-	public CassandraConfiguration()
-	{
-	}
-
 	public CassandraConfiguration(int replicationFactor,
-			int singleRowReadSize,
-			int multiRowSize,
-			int multiRowReadSize,
-			int writeDelay,
-			int maxWriteSize,
 			String hostList,
 			String keyspaceName)
 	{
 		m_replicationFactor = replicationFactor;
 		m_hostList = hostList;
 		m_keyspaceName = keyspaceName;
-	}
-
-	public boolean isUseTimeIndexRead() {
-		return m_useTimeIndexRead;
-	}
-
-	public boolean isUseTimeIndexWrite() {
-		return m_useTimeIndexWrite;
-	}
-
-	public long getNewSplitIndexStartTimeMs() {
-		return m_newSplitIndexStartTimeMs;
 	}
 
 	public String getIndexTagList() {
