@@ -39,6 +39,7 @@ import org.kairosdb.core.tiers.AccessTokensProvider;
 import org.kairosdb.core.tiers.ExecutorProvider;
 import org.kairosdb.core.tiers.MetricTiersConfiguration;
 import org.kairosdb.core.tiers.MetricTiersConfigurationUpdateJob;
+import org.kairosdb.datastore.cassandra.CassandraConsistencyLevelConfiguration;
 import org.kairosdb.datastore.cassandra.ConsistencyConfigurationUpdateJob;
 import org.kairosdb.datastore.cassandra.cache.CacheWarmingUpConfiguration;
 import org.kairosdb.datastore.cassandra.cache.CacheWarmingUpConfigurationUpdateJob;
@@ -103,6 +104,7 @@ public class CoreModule extends AbstractModule
 		bind(CacheWarmingUpLogic.class).in(Singleton.class);
 		bind(CacheWarmingUpConfiguration.class).in(Singleton.class);
 		bind(CacheWarmingUpConfigurationUpdateJob.class).in(Singleton.class);
+		bind(CassandraConsistencyLevelConfiguration.class).in(Singleton.class);
 		bind(ConsistencyConfigurationUpdateJob.class).in(Singleton.class);
 
 		bind(SumAggregator.class);
