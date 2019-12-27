@@ -31,6 +31,7 @@ public class ConsistencyConfigurationUpdateJob implements KairosDBJob {
         this.config = config;
         this.schedule = schedule;
         this.entityResolver = entityResolver;
+        logger.warn(String.format("The schedule is '%s'", schedule));
     }
 
     @Override
@@ -57,10 +58,11 @@ public class ConsistencyConfigurationUpdateJob implements KairosDBJob {
                     }
                 })
                 .ifPresent(readLevel -> {
-                    logger.debug("Updating 'read_level' value to " + readLevel.name());
-                    config.setReadLevel(readLevel);
+                    if (readLevel != config.getReadLevel()) {
+                        logger.warn("Updating 'read_level' value to " + readLevel.name());
+                        config.setReadLevel(readLevel);
+                    }
                 });
         logger.debug("Config updated: " + config.toString());
     }
 }
-
