@@ -111,6 +111,10 @@ public class CassandraConfiguration {
 	@Named(QUERY_SAMPLING_PERCENTAGE)
 	private int querySamplingPercentage = 20;
 
+	// Needed for inject to work
+	@SuppressWarnings("unused")
+	public CassandraConfiguration() { }
+
 	public CassandraConfiguration(int replicationFactor,
 			String hostList,
 			String keyspaceName)
