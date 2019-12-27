@@ -41,14 +41,19 @@ public class CacheFileCleaner implements KairosDBJob
 	{
 		this.datastore = datastore;
 		this.schedule = schedule;
+		logger.warn(String.format("The schedule is '%s'", schedule));
 	}
 
 	@Override
 	public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException
 	{
-		logger.debug("Executing job...");
-		datastore.cleanCacheDir(true);
-		logger.debug("Job Completed");
+		logger.warn("Trying to clean up cache dir");
+		try {
+			datastore.cleanCacheDir(true);
+			logger.warn("Cleanup finished");
+		} catch (Exception e) {
+			logger.error("Exception during cache cleanup", e);
+		}
 	}
 
 	@Override

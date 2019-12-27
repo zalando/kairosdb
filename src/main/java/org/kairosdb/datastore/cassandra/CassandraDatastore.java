@@ -110,6 +110,8 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
     private final CacheWarmingUpLogic m_cacheWarmingUpLogic;
     private final CacheWarmingUpConfiguration m_cacheWarmingUpConfiguration;
 
+    private final CassandraConsistencyLevelConfiguration m_cassandraConsistencyLevelConfiguration;
+
     private final List<String> m_indexTagList;
     private final ListMultimap<String, String> m_metricIndexTagMap;
 
@@ -135,6 +137,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
                               LongDataPointFactory longDataPointFactory,
                               CacheWarmingUpLogic cacheWarmingUpLogic,
                               CacheWarmingUpConfiguration cacheWarmingUpConfiguration,
+                              CassandraConsistencyLevelConfiguration cassandraConsistencyLevelConfiguration,
                               RowKeyCache rowKeyCache,
                               @Named(METRIC_NAME_CACHE) StringKeyCache metricNameCache,
                               @Named(TAG_NAME_CACHE) StringKeyCache tagNameCache,
@@ -153,6 +156,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         m_longDataPointFactory = longDataPointFactory;
         m_cacheWarmingUpLogic = cacheWarmingUpLogic;
         m_cacheWarmingUpConfiguration = cacheWarmingUpConfiguration;
+        m_cassandraConsistencyLevelConfiguration = cassandraConsistencyLevelConfiguration;
 
         m_session = m_cassandraClient.getKeyspaceSession();
 
@@ -343,7 +347,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
 
     private Iterable<String> queryStringIndex(final String key) {
 
-        BoundStatement bs = m_psQueryStringIndex.bind();
+        BoundStatement bs = m_psQueryStringIndex.setConsistencyLevel(m_cassandraConsistencyLevelConfiguration.getReadLevel()).bind();
         bs.setBytes(0, ByteBuffer.wrap(key.getBytes(StandardCharsets.UTF_8)));
 
         ResultSet rs = m_session.execute(bs);
@@ -395,6 +399,8 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
         List<CQLQueryRunner> runners = new ArrayList<>();
         List<DataPointsRowKey> queryKeys = new ArrayList<>();
 
+        PreparedStatement queryDataPoints = m_psQueryDataPoints.setConsistencyLevel(m_cassandraConsistencyLevelConfiguration.getReadLevel());
+
         MemoryMonitor mm = new MemoryMonitor(20);
 
         List<DataPointsRowKey> sorted = new ArrayList<>(rowKeys);
@@ -424,7 +430,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
                         queryKeys.add(rowKey);
                     } else {
                         // logger.info("Creating new query runner: metric={} size={} ts-delta={}", queryKeys.get(0).getMetricName(), queryKeys.size(), currentTimeTier - rowKey.getTimestamp());
-                        runners.add(new CQLQueryRunner(m_session, m_psQueryDataPoints, m_kairosDataPointFactory,
+                        runners.add(new CQLQueryRunner(m_session, queryDataPoints, m_kairosDataPointFactory,
                                 queryKeys,
                                 query.getStartTime(), query.getEndTime(), m_rowWidthRead, queryCallback, query.getLimit(), query.getOrder()));
 
@@ -444,7 +450,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             //There may be stragglers that are not ran
             if (!queryKeys.isEmpty()) {
                 // logger.info("Creating new runner for remaining keys: metric={} size={}", queryKeys.get(0).getMetricName(), queryKeys.size());
-                runners.add(new CQLQueryRunner(m_session, m_psQueryDataPoints, m_kairosDataPointFactory,
+                runners.add(new CQLQueryRunner(m_session, queryDataPoints, m_kairosDataPointFactory,
                         queryKeys,
                         query.getStartTime(), query.getEndTime(), m_rowWidthRead, queryCallback, query.getLimit(), query.getOrder()));
             }
@@ -841,7 +847,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
                                                                  final int limit) {
         final String metricName = query.getName();
 
-        final BoundStatement bs = m_psQueryRowTimeKeySplitIndex.bind();
+        final BoundStatement bs = m_psQueryRowTimeKeySplitIndex.setConsistencyLevel(m_cassandraConsistencyLevelConfiguration.getReadLevel()).bind();
         bs.setString(0, metricName);
         bs.setString(1, useSplitField);
         bs.setString(2, useSplitValue);
@@ -853,7 +859,7 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
 
     private ResultSetFuture collectFromRowTimeKeyIndexAsync(ByteBuffer metricName, Long bucket,
                                                             final int limit) {
-        final BoundStatement bs = m_psQueryRowTimeKeyIndex.bind();
+        final BoundStatement bs = m_psQueryRowTimeKeyIndex.setConsistencyLevel(m_cassandraConsistencyLevelConfiguration.getReadLevel()).bind();
         bs.setBytes(0, metricName);
         bs.setLong(1, bucket);
         bs.setInt(2, limit);
