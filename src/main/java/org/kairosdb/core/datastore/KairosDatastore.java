@@ -124,10 +124,11 @@ public class KairosDatastore {
 		m_cacheDir = newCacheDir;
 	}
 
-	@SuppressWarnings("ResultOfMethodCallIgnored")
 	private void cleanDirectory(File directory) {
-		if (!directory.exists())
+		if (!directory.exists()) {
+			logger.warn(String.format("There is no such path '%s'", directory.getAbsolutePath()));
 			return;
+		}
 		File[] list = directory.listFiles();
 
 		if (list != null && list.length > 0) {
@@ -135,11 +136,15 @@ public class KairosDatastore {
 				if (aList.isDirectory())
 					cleanDirectory(aList);
 
-				aList.delete();
+				if (!aList.delete()) {
+					logger.error(String.format("Unable to delete file '%s'", aList.getAbsolutePath()));
+				}
 			}
 		}
 
-		directory.delete();
+		if (!directory.delete()) {
+			logger.error(String.format("Unable to delete directory '%s'", directory.getAbsolutePath()));
+		}
 	}
 
 	public void cleanCacheDir(boolean wait) {
@@ -148,6 +153,7 @@ public class KairosDatastore {
 
 		if (wait) {
 			try {
+				logger.warn("Sleep for 1 minute");
 				Thread.sleep(60000);
 			} catch (InterruptedException e) {
 				logger.error("Sleep interrupted:", e);
@@ -156,7 +162,7 @@ public class KairosDatastore {
 
 		logger.debug("Executing job...");
 		File dir = new File(oldCacheDir);
-		logger.debug("Deleting cache files in " + dir.getAbsolutePath());
+		logger.warn("Deleting cache files in " + dir.getAbsolutePath());
 
 		cleanDirectory(dir);
 	}
