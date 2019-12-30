@@ -27,11 +27,15 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.DataPointListener;
+import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.aggregator.Aggregator;
 import org.kairosdb.core.aggregator.LimitAggregator;
+import org.kairosdb.core.datapoints.LongDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.groupby.*;
+import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.datastore.cassandra.MaxRowKeysForQueryExceededException;
 import org.kairosdb.util.MemoryMonitor;
 import org.slf4j.Logger;
@@ -44,11 +48,14 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static org.kairosdb.core.http.rest.MetricsResource.ARTIFACT_VERSION;
+import static org.kairosdb.core.http.rest.MetricsResource.DEPLOYMENT_ID;
 
-public class KairosDatastore {
+public class KairosDatastore implements KairosMetricReporter {
 	public static final Logger logger = LoggerFactory.getLogger(KairosDatastore.class);
 	public static final String QUERY_CACHE_DIR = "kairosdb.query_cache.cache_dir";
 	public static final String QUERY_METRIC_TIME = "kairosdb.datastore.query_time";
@@ -56,6 +63,10 @@ public class KairosDatastore {
 	public static final String QUERY_SAMPLE_SIZE = "kairosdb.datastore.query_sample_size";
 	public static final String QUERY_ROW_COUNT = "kairosdb.datastore.query_row_count";
 	public static final String METRIC_QUERY_CACHE_READ_TIME = "kairosdb.datastore.cache_read_time";
+
+	private static final String READ_CACHE_HIT = "kairosdb.datastore.read.cache_hit";
+	private static final String READ_CACHE_MISS = "kairosdb.datastore.read.cache_miss";
+
 	private final Datastore m_datastore;
 	private final QueryQueuingManager m_queuingManager;
 	private final List<DataPointListener> m_dataPointListeners;
@@ -63,6 +74,24 @@ public class KairosDatastore {
 
 	private String m_baseCacheDir;
 	private volatile String m_cacheDir;
+
+	private final AtomicInteger m_readCacheHit = new AtomicInteger();
+	private final AtomicInteger m_readCacheMiss = new AtomicInteger();
+
+	@Inject
+	private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
+
+	@Inject(optional = true)
+	@Named(ARTIFACT_VERSION)
+	private String m_artifactVersion = "2.0-z";
+
+	@Inject(optional = true)
+	@Named(DEPLOYMENT_ID)
+	private String m_deploymentId = "2.0-z-d1";
+
+	@Inject
+	@Named("HOSTNAME")
+	private String hostName = "localhost";
 
 	private Tracer tracer;
 
@@ -373,6 +402,33 @@ public class KairosDatastore {
 		return new BigInteger(1, digest).toString(16);
 	}
 
+	@Override
+	public List<DataPointSet> getMetrics(long now) {
+		DataPointSet dpsHit = new DataPointSet(READ_CACHE_HIT);
+		DataPointSet dpsMiss = new DataPointSet(READ_CACHE_MISS);
+
+		int hits = m_readCacheHit.get();
+		int misses = m_readCacheMiss.get();
+
+		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
+		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
+
+		dpsHit.addTag("host", hostName);
+		dpsHit.addTag("artifact_version", m_artifactVersion);
+		dpsHit.addTag("deployment_id", m_deploymentId);
+
+		dpsMiss.addTag("host", hostName);
+		dpsMiss.addTag("artifact_version", m_artifactVersion);
+		dpsMiss.addTag("deployment_id", m_deploymentId);
+
+		List<DataPointSet> ret = new ArrayList<>();
+
+		ret.add(dpsHit);
+		ret.add(dpsMiss);
+
+		return ret;
+	}
+
 
 	private class DatastoreQueryImpl implements DatastoreQuery {
 		private String m_cacheFilename;
@@ -418,6 +474,7 @@ public class KairosDatastore {
                         if (cachedResults != null) {
                             returnedRows = cachedResults.getRows();
                             span.setTag("cached", true);
+                            m_readCacheHit.incrementAndGet();
                         }
                     }
 
@@ -426,6 +483,8 @@ public class KairosDatastore {
                                 tempFile, m_dataPointFactory);
                         m_datastore.queryDatabase(m_metric, cachedResults);
                         returnedRows = cachedResults.getRows();
+						span.setTag("cached", false);
+						m_readCacheMiss.incrementAndGet();
                     }
                 } catch (MaxRowKeysForQueryExceededException e) {
                     cachedResults.decrementClose();
