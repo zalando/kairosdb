@@ -27,11 +27,15 @@ import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
 import org.kairosdb.core.DataPoint;
 import org.kairosdb.core.DataPointListener;
+import org.kairosdb.core.DataPointSet;
 import org.kairosdb.core.KairosDataPointFactory;
 import org.kairosdb.core.aggregator.Aggregator;
 import org.kairosdb.core.aggregator.LimitAggregator;
+import org.kairosdb.core.datapoints.LongDataPointFactory;
+import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.groupby.*;
+import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.datastore.cassandra.MaxRowKeysForQueryExceededException;
 import org.kairosdb.util.MemoryMonitor;
 import org.slf4j.Logger;
@@ -44,11 +48,12 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public class KairosDatastore {
+public class KairosDatastore implements KairosMetricReporter {
 	public static final Logger logger = LoggerFactory.getLogger(KairosDatastore.class);
 	public static final String QUERY_CACHE_DIR = "kairosdb.query_cache.cache_dir";
 	public static final String QUERY_METRIC_TIME = "kairosdb.datastore.query_time";
@@ -56,6 +61,10 @@ public class KairosDatastore {
 	public static final String QUERY_SAMPLE_SIZE = "kairosdb.datastore.query_sample_size";
 	public static final String QUERY_ROW_COUNT = "kairosdb.datastore.query_row_count";
 	public static final String METRIC_QUERY_CACHE_READ_TIME = "kairosdb.datastore.cache_read_time";
+
+	private static final String READ_CACHE_HIT = "kairosdb.datastore.read.cache_hit";
+	private static final String READ_CACHE_MISS = "kairosdb.datastore.read.cache_miss";
+
 	private final Datastore m_datastore;
 	private final QueryQueuingManager m_queuingManager;
 	private final List<DataPointListener> m_dataPointListeners;
@@ -63,6 +72,16 @@ public class KairosDatastore {
 
 	private String m_baseCacheDir;
 	private volatile String m_cacheDir;
+
+	private final AtomicInteger m_readCacheHit = new AtomicInteger();
+	private final AtomicInteger m_readCacheMiss = new AtomicInteger();
+
+	@Inject
+	private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
+
+	@Inject
+	@Named("HOSTNAME")
+	private String hostName = "localhost";
 
 	private Tracer tracer;
 
@@ -153,8 +172,8 @@ public class KairosDatastore {
 
 		if (wait) {
 			try {
-				logger.warn("Sleep for 1 minute");
-				Thread.sleep(60000);
+				logger.warn("Sleep for 10 minutes, to make sure that all read requests using old cache dir are finished");
+				Thread.sleep(10*60*1000);
 			} catch (InterruptedException e) {
 				logger.error("Sleep interrupted:", e);
 			}
@@ -373,6 +392,24 @@ public class KairosDatastore {
 		return new BigInteger(1, digest).toString(16);
 	}
 
+	@Override
+	public List<DataPointSet> getMetrics(long now) {
+		DataPointSet dpsHit = new DataPointSet(READ_CACHE_HIT);
+		DataPointSet dpsMiss = new DataPointSet(READ_CACHE_MISS);
+
+		int hits = m_readCacheHit.getAndSet(0);
+		int misses = m_readCacheMiss.getAndSet(0);
+
+		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
+		dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
+
+		List<DataPointSet> ret = Arrays.asList(dpsHit, dpsMiss);
+
+		ret.forEach(dps -> dps.addTag("host", hostName));
+
+		return ret;
+	}
+
 
 	private class DatastoreQueryImpl implements DatastoreQuery {
 		private String m_cacheFilename;
@@ -418,6 +455,7 @@ public class KairosDatastore {
                         if (cachedResults != null) {
                             returnedRows = cachedResults.getRows();
                             span.setTag("cached", true);
+                            m_readCacheHit.incrementAndGet();
                         }
                     }
 
@@ -426,6 +464,8 @@ public class KairosDatastore {
                                 tempFile, m_dataPointFactory);
                         m_datastore.queryDatabase(m_metric, cachedResults);
                         returnedRows = cachedResults.getRows();
+						span.setTag("cached", false);
+						m_readCacheMiss.incrementAndGet();
                     }
                 } catch (MaxRowKeysForQueryExceededException e) {
                     cachedResults.decrementClose();
