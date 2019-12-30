@@ -52,8 +52,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static org.kairosdb.core.http.rest.MetricsResource.ARTIFACT_VERSION;
-import static org.kairosdb.core.http.rest.MetricsResource.DEPLOYMENT_ID;
 
 public class KairosDatastore implements KairosMetricReporter {
 	public static final Logger logger = LoggerFactory.getLogger(KairosDatastore.class);
@@ -80,14 +78,6 @@ public class KairosDatastore implements KairosMetricReporter {
 
 	@Inject
 	private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
-
-	@Inject(optional = true)
-	@Named(ARTIFACT_VERSION)
-	private String m_artifactVersion = "2.0-z";
-
-	@Inject(optional = true)
-	@Named(DEPLOYMENT_ID)
-	private String m_deploymentId = "2.0-z-d1";
 
 	@Inject
 	@Named("HOSTNAME")
@@ -407,24 +397,15 @@ public class KairosDatastore implements KairosMetricReporter {
 		DataPointSet dpsHit = new DataPointSet(READ_CACHE_HIT);
 		DataPointSet dpsMiss = new DataPointSet(READ_CACHE_MISS);
 
-		int hits = m_readCacheHit.get();
-		int misses = m_readCacheMiss.get();
+		int hits = m_readCacheHit.getAndSet(0);
+		int misses = m_readCacheMiss.getAndSet(0);
 
 		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
 		dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
 
-		dpsHit.addTag("host", hostName);
-		dpsHit.addTag("artifact_version", m_artifactVersion);
-		dpsHit.addTag("deployment_id", m_deploymentId);
+		List<DataPointSet> ret = Arrays.asList(dpsHit, dpsMiss);
 
-		dpsMiss.addTag("host", hostName);
-		dpsMiss.addTag("artifact_version", m_artifactVersion);
-		dpsMiss.addTag("deployment_id", m_deploymentId);
-
-		List<DataPointSet> ret = new ArrayList<>();
-
-		ret.add(dpsHit);
-		ret.add(dpsMiss);
+		ret.forEach(dps -> dps.addTag("host", hostName));
 
 		return ret;
 	}
