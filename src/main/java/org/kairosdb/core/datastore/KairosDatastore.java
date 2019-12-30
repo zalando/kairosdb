@@ -411,7 +411,7 @@ public class KairosDatastore implements KairosMetricReporter {
 		int misses = m_readCacheMiss.get();
 
 		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
-		dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
+		dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
 
 		dpsHit.addTag("host", hostName);
 		dpsHit.addTag("artifact_version", m_artifactVersion);
