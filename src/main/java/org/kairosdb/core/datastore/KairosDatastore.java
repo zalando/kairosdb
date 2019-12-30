@@ -153,8 +153,8 @@ public class KairosDatastore {
 
 		if (wait) {
 			try {
-				logger.warn("Sleep for 1 minute");
-				Thread.sleep(60000);
+				logger.warn("Sleep for 10 minutes, to make sure that all read requests using old cache dir are finished");
+				Thread.sleep(10*60*1000);
 			} catch (InterruptedException e) {
 				logger.error("Sleep interrupted:", e);
 			}
