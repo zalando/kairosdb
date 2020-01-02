@@ -96,7 +96,7 @@ public class CachedSearchResult implements QueryCallback {
     private void loadIndex() throws IOException, ClassNotFoundException {
         ObjectInputStream in = new ObjectInputStream(new FileInputStream(m_indexFile));
         int size = in.readInt();
-        for (int I = 0; I < size; I++) {
+        for (int i = 0; i < size; i++) {
             //open the cache file only if there will be data point groups returned
             if (m_randomAccessFile == null)
                 openCacheFile();
@@ -310,7 +310,7 @@ public class CachedSearchResult implements QueryCallback {
             //m_dataPointCount = (int)((m_endPosition - m_startPosition) / DATA_POINT_SIZE);
 
             int tagCount = in.readInt();
-            for (int I = 0; I < tagCount; I++) {
+            for (int i = 0; i < tagCount; i++) {
                 String key = m_stringPool.getString((String) in.readObject());
                 String value = m_stringPool.getString((String) in.readObject());
                 m_tags.put(key, value);
