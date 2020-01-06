@@ -21,41 +21,42 @@ import org.kairosdb.core.DataPoint;
 import java.util.Iterator;
 import java.util.Set;
 
-public interface DataPointRow extends Iterator<DataPoint>
-{
-	/**
-	 Returns the metric name for this group
-	 @return Metric name
-	 */
-	String getName();
+public interface DataPointRow extends Iterator<DataPoint> {
+    /**
+     * Returns the metric name for this group
+     *
+     * @return Metric name
+     */
+    String getName();
 
-	/**
-	 Returns the data type associated with the data points in this row
-	 @return
-	 */
-	String getDatastoreType();
+    /**
+     * Returns the data type associated with the data points in this row
+     */
+    String getDatastoreType();
 
-	/**
-	 Returns a set of tag names associated with this group of data points
-	 @return Set of tag names
-	 */
-	Set<String> getTagNames();
+    /**
+     * Returns a set of tag names associated with this group of data points
+     *
+     * @return Set of tag names
+     */
+    Set<String> getTagNames();
 
-	/**
-	 Returns the tag value for the given tag name.
-	 @param tag Tag to get the value for
-	 @return A tag value
-	 */
-	String getTagValue(String tag);
+    /**
+     * Returns the tag value for the given tag name.
+     *
+     * @param tag Tag to get the value for
+     * @return A tag value
+     */
+    String getTagValue(String tag);
 
-	/**
-	 Close any underlying resources held open by this DataPointGroup.  This
-	 will be called at the end of a query to free up resources.
-	 */
-	void close();
+    /**
+     * Close any underlying resources held open by this DataPointGroup.  This
+     * will be called at the end of a query to free up resources.
+     */
+    void close();
 
-	/**
-	 Returns the number of datapoints in this row
-	 */
-	int getDataPointCount();
+    /**
+     * Returns the number of datapoints in this row
+     */
+    int getDataPointCount();
 }

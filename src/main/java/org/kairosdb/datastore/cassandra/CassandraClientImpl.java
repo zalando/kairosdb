@@ -81,19 +81,19 @@ public class CassandraClientImpl implements CassandraClient {
 	}
 
     private void logConnectionPoolConfig(PoolingOptions poolOpts) {
-        logger.debug("Core connections per host (remote): " + poolOpts.getCoreConnectionsPerHost(HostDistance.REMOTE));
-        logger.debug("Core connections per host (local): " + poolOpts.getCoreConnectionsPerHost(HostDistance.LOCAL));
-        logger.debug("Max connections per host (remote): " + poolOpts.getMaxConnectionsPerHost(HostDistance.REMOTE));
-        logger.debug("Max connections per host (local): " + poolOpts.getMaxConnectionsPerHost(HostDistance.LOCAL));
-        logger.debug("Max requests per connection (remote): " + poolOpts.getMaxRequestsPerConnection(HostDistance.REMOTE));
-        logger.debug("Max requests per connection (local): " + poolOpts.getMaxRequestsPerConnection(HostDistance.LOCAL));
-        logger.debug("Max queue size: " + poolOpts.getMaxQueueSize());
-        logger.debug("Pool timeout mills: " + poolOpts.getPoolTimeoutMillis());
-        logger.debug("Idle timeout seconds: " + poolOpts.getIdleTimeoutSeconds());
+        logger.warn("Core connections per host (remote): " + poolOpts.getCoreConnectionsPerHost(HostDistance.REMOTE));
+        logger.warn("Core connections per host (local): " + poolOpts.getCoreConnectionsPerHost(HostDistance.LOCAL));
+        logger.warn("Max connections per host (remote): " + poolOpts.getMaxConnectionsPerHost(HostDistance.REMOTE));
+        logger.warn("Max connections per host (local): " + poolOpts.getMaxConnectionsPerHost(HostDistance.LOCAL));
+        logger.warn("Max requests per connection (remote): " + poolOpts.getMaxRequestsPerConnection(HostDistance.REMOTE));
+        logger.warn("Max requests per connection (local): " + poolOpts.getMaxRequestsPerConnection(HostDistance.LOCAL));
+        logger.warn("Max queue size: " + poolOpts.getMaxQueueSize());
+        logger.warn("Pool timeout mills: " + poolOpts.getPoolTimeoutMillis());
+        logger.warn("Idle timeout seconds: " + poolOpts.getIdleTimeoutSeconds());
 
         final ProtocolOptions protocolOpts = m_cluster.getConfiguration().getProtocolOptions();
         if (protocolOpts != null && protocolOpts.getProtocolVersion() != null) {
-            logger.debug("Protocol version: " + protocolOpts.getProtocolVersion().toString());
+            logger.warn("Protocol version: " + protocolOpts.getProtocolVersion().toString());
         }
     }
 
