@@ -45,6 +45,8 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -136,6 +138,26 @@ public class KairosDatastore implements KairosMetricReporter {
         m_cacheDir = newCacheDir;
     }
 
+    private void cleanDirectory(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            logger.warn("There is no such path '{}'", directory.toAbsolutePath());
+            return;
+        }
+        Files.list(directory).forEach(entry -> {
+            try {
+                if (Files.isDirectory(entry)) {
+                    cleanDirectory(entry);
+                } else {
+                    Files.delete(entry);
+                }
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        });
+
+        Files.delete(directory);
+    }
+
     private void cleanDirectory(File directory) {
         if (!directory.exists()) {
             logger.warn(String.format("There is no such path '%s'", directory.getAbsolutePath()));
@@ -159,7 +181,7 @@ public class KairosDatastore implements KairosMetricReporter {
         }
     }
 
-    public void cleanCacheDir(boolean wait) {
+    public void cleanCacheDir(boolean wait) throws IOException {
         String oldCacheDir = m_cacheDir;
         newCacheDirectory();
 
@@ -176,7 +198,7 @@ public class KairosDatastore implements KairosMetricReporter {
         File dir = new File(oldCacheDir);
         logger.warn("Deleting cache files in " + dir.getAbsolutePath());
 
-        cleanDirectory(dir);
+        cleanDirectory(dir.toPath());
     }
 
     /**
