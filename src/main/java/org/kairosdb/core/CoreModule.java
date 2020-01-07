@@ -33,6 +33,7 @@ import org.kairosdb.core.datastore.QueryQueuingManager;
 import org.kairosdb.core.groupby.*;
 import org.kairosdb.core.http.rest.json.QueryParser;
 import org.kairosdb.core.jobs.CacheFileCleaner;
+import org.kairosdb.core.jobs.CacheFilesCounter;
 import org.kairosdb.core.onlineconfig.EntityResolver;
 import org.kairosdb.core.scheduler.KairosDBScheduler;
 import org.kairosdb.core.tiers.AccessTokensProvider;
@@ -92,6 +93,7 @@ public class CoreModule extends AbstractModule
 		bind(QueryPluginFactory.class).to(GuiceQueryPluginFactory.class).in(Singleton.class);
 		bind(QueryParser.class).in(Singleton.class);
 		bind(CacheFileCleaner.class).in(Singleton.class);
+		bind(CacheFilesCounter.class).in(Singleton.class);
 		bind(KairosDBScheduler.class).in(Singleton.class);
 		bind(MemoryMonitor.class).in(Singleton.class);
 

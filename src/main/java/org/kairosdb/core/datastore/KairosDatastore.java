@@ -45,10 +45,14 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -59,6 +63,7 @@ public class KairosDatastore implements KairosMetricReporter {
 
     private static final String READ_CACHE_HIT = "kairosdb.datastore.read.cache_hit";
     private static final String READ_CACHE_MISS = "kairosdb.datastore.read.cache_miss";
+	private static final String FILES_IN_CACHE_DIR = "kairosdb.datastore.read.files_in_cache_dir";
 
     private final Datastore m_datastore;
     private final QueryQueuingManager m_queuingManager;
@@ -70,6 +75,7 @@ public class KairosDatastore implements KairosMetricReporter {
 
     private final AtomicInteger m_readCacheHit = new AtomicInteger();
     private final AtomicInteger m_readCacheMiss = new AtomicInteger();
+	private final AtomicLong m_numberOfFilesInCacheDir = new AtomicLong();
 
     @Inject
     private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
@@ -136,6 +142,26 @@ public class KairosDatastore implements KairosMetricReporter {
         m_cacheDir = newCacheDir;
     }
 
+    private void cleanDirectory(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            logger.warn("There is no such path '{}'", directory.toAbsolutePath());
+            return;
+        }
+        Files.list(directory).forEach(entry -> {
+            try {
+                if (Files.isDirectory(entry)) {
+                    cleanDirectory(entry);
+                } else {
+                    Files.delete(entry);
+                }
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        });
+
+        Files.delete(directory);
+    }
+
     private void cleanDirectory(File directory) {
         if (!directory.exists()) {
             logger.warn(String.format("There is no such path '%s'", directory.getAbsolutePath()));
@@ -159,7 +185,7 @@ public class KairosDatastore implements KairosMetricReporter {
         }
     }
 
-    public void cleanCacheDir(boolean wait) {
+    public void cleanCacheDir(boolean wait) throws IOException {
         String oldCacheDir = m_cacheDir;
         newCacheDirectory();
 
@@ -176,8 +202,18 @@ public class KairosDatastore implements KairosMetricReporter {
         File dir = new File(oldCacheDir);
         logger.warn("Deleting cache files in " + dir.getAbsolutePath());
 
-        cleanDirectory(dir);
+        cleanDirectory(dir.toPath());
     }
+
+    public void countFilesInTheCacheDir() {
+		String currentDir = this.m_cacheDir;
+		try {
+			long count = Files.list(Paths.get(currentDir)).count();
+			m_numberOfFilesInCacheDir.set(count);
+		} catch (IOException e) {
+			throw new RuntimeException("Cannot count files in cache dir", e);
+		}
+	}
 
     /**
      * Close the datastore
@@ -379,12 +415,15 @@ public class KairosDatastore implements KairosMetricReporter {
     public List<DataPointSet> getMetrics(long now) {
         DataPointSet dpsHit = new DataPointSet(READ_CACHE_HIT);
         DataPointSet dpsMiss = new DataPointSet(READ_CACHE_MISS);
+		DataPointSet dpsFilesCount = new DataPointSet(FILES_IN_CACHE_DIR);
 
         int hits = m_readCacheHit.getAndSet(0);
         int misses = m_readCacheMiss.getAndSet(0);
+        long filesCount = m_numberOfFilesInCacheDir.getAndSet(0);
 
         dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
         dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
+		dpsFilesCount.addDataPoint(m_longDataPointFactory.createDataPoint(now, filesCount));
 
         List<DataPointSet> ret = Arrays.asList(dpsHit, dpsMiss);
 
