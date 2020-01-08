@@ -73,7 +73,7 @@ public class CachedSearchResult implements QueryCallback {
     private void openCacheFile() throws FileNotFoundException {
         //Cache cleanup could have removed the folders
         if (!m_dataFile.getParentFile().mkdirs()) {
-            logger.error(String.format("Could not create directory %s", m_dataFile.getParentFile().getAbsolutePath()));
+            logger.debug(String.format("Could not create directory %s, which is fine", m_dataFile.getParentFile().getAbsolutePath()));
         }
         m_randomAccessFile = new RandomAccessFile(m_dataFile, "rw");
         m_dataOutputStream = BufferedDataOutputStream.create(m_randomAccessFile, 0L);
@@ -138,10 +138,10 @@ public class CachedSearchResult implements QueryCallback {
 
         //Just in case the file are there.
         if (!dataFile.delete()) {
-            logger.error(String.format("Could not delete file %s", dataFile.getAbsolutePath()));
+            logger.debug(String.format("Could not delete file %s, seems it is deleted already", dataFile.getAbsolutePath()));
         }
         if (!indexFile.delete()) {
-            logger.error(String.format("Could not delete file %s", indexFile.getAbsolutePath()));
+            logger.debug(String.format("Could not delete file %s, seems it is deleted already", indexFile.getAbsolutePath()));
         }
 
         return new CachedSearchResult(metricName, dataFile, indexFile, dataPointFactory);
