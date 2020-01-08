@@ -425,7 +425,7 @@ public class KairosDatastore implements KairosMetricReporter {
         dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
 		dpsFilesCount.addDataPoint(m_longDataPointFactory.createDataPoint(now, filesCount));
 
-        List<DataPointSet> ret = Arrays.asList(dpsHit, dpsMiss);
+        List<DataPointSet> ret = Arrays.asList(dpsHit, dpsMiss, dpsFilesCount);
 
         ret.forEach(dps -> dps.addTag("host", hostName));
 
