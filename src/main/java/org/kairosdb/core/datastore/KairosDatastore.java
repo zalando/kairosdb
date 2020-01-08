@@ -419,7 +419,7 @@ public class KairosDatastore implements KairosMetricReporter {
 
         int hits = m_readCacheHit.getAndSet(0);
         int misses = m_readCacheMiss.getAndSet(0);
-        long filesCount = m_numberOfFilesInCacheDir.getAndSet(0);
+        long filesCount = m_numberOfFilesInCacheDir.get(); // we do not need to set it to 0 cause it would be set by job
 
         dpsHit.addDataPoint(m_longDataPointFactory.createDataPoint(now, hits));
         dpsMiss.addDataPoint(m_longDataPointFactory.createDataPoint(now, misses));
