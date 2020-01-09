@@ -36,15 +36,7 @@ public interface DatastoreMetricQuery
 
 	List<QueryPlugin> getPlugins();
 
-	void setQueryUUID(UUID uuid);
+    DatastoreMetricQueryMetadata getMeta();
 
-	UUID getQueryUUID();
-
-	void setQueryLoggingType(String type);
-
-	String getQueryLoggingType();
-
-	boolean isLoggable();
-
-	void setLoggable(boolean loggable);
+	void setMeta(DatastoreMetricQueryMetadata datastoreMetricQueryMetadata);
 }

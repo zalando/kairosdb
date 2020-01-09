@@ -44,6 +44,7 @@ public class QueryMetric implements DatastoreMetricQuery
 	private String loggingType;
 	private boolean loggable;
 	private boolean rejected;
+	private DatastoreMetricQueryMetadata meta;
 
 	public QueryMetric(long start_time, int cacheTime, String name)
 	{
@@ -197,35 +198,19 @@ public class QueryMetric implements DatastoreMetricQuery
 	}
 
 	@Override
-	public void setQueryUUID(UUID uuid) {
-		this.uuid = uuid;
+	public DatastoreMetricQueryMetadata getMeta() {
+		return meta;
 	}
 
 	@Override
-	public UUID getQueryUUID() {
-		return uuid;
-	}
-
-	public void setQueryLoggingType(String type) {
-		this.loggingType = type;
-	}
-
-	public String getQueryLoggingType() {
-		return loggingType == null ? "simple" : loggingType;
+	public void setMeta(DatastoreMetricQueryMetadata meta) {
+		this.meta = meta;
 	}
 
 	public QueryMetric addPlugin(QueryPlugin plugin)
 	{
 		this.plugins.add(plugin);
 		return this;
-	}
-
-	public boolean isLoggable() {
-		return loggable;
-	}
-
-	public void setLoggable(boolean loggable) {
-		this.loggable = loggable;
 	}
 
 	public void setRejected(boolean rejected) {
