@@ -439,7 +439,7 @@ public class KairosDatastore implements KairosMetricReporter {
         public List<DataPointGroup> execute() throws DatastoreException {
             Span span = tracer.buildSpan("query_database_datapoints_count").start();
 
-            try (Scope scope = tracer.scopeManager().activate(span, false)) {
+            try (Scope scope = tracer.scopeManager().activate(span)) {
                 CachedSearchResult cachedResults = null;
 
                 List<DataPointRow> returnedRows = null;
@@ -487,12 +487,7 @@ public class KairosDatastore implements KairosMetricReporter {
                 span.setTag("datapoint_count", m_dataPointCount);
                 span.setTag("row_count", m_rowCount);
 
-                if (m_metric.isLoggable()) {
-                    final long endTime = Long.MAX_VALUE == m_metric.getEndTime() ? System.currentTimeMillis() : m_metric.getEndTime();
-                    logger.info("{}_query_finished: uuid={} metric={} datapoint_count={} row_count={} start_time={} end_time={} duration={}",
-                            m_metric.getQueryLoggingType(), m_metric.getQueryUUID(), m_metric.getName(), m_dataPointCount,
-                            m_rowCount, m_metric.getStartTime(), endTime, endTime - m_metric.getStartTime());
-                }
+                logQuery();
 
                 List<DataPointGroup> queryResults = groupByTypeAndTag(m_metric.getName(),
                         returnedRows, getTagGroupBy(m_metric.getGroupBys()), m_metric.getOrder());
@@ -540,6 +535,21 @@ public class KairosDatastore implements KairosMetricReporter {
                 span.finish();
             }
             return m_results;
+        }
+
+        private void logQuery() {
+            final DatastoreMetricQueryMetadata meta = m_metric.getMeta();
+            if (meta == null || !meta.getLoggable()) {
+                return;
+            }
+
+            final long endTime = Long.MAX_VALUE == m_metric.getEndTime() ? System.currentTimeMillis() : m_metric.getEndTime();
+            final long duration = endTime - m_metric.getStartTime();
+            final boolean isUntilNow = System.currentTimeMillis() - endTime <= 30_000;
+            logger.info("query_finished: type={} metric={} query={} datapoint_count={} rows_read={} " +
+                            "rows_filtered={} start_time={} end_time={} duration={} is_until_now={}",
+                    meta.getQueryType(), m_metric.getName(), m_metric.getTags(), m_dataPointCount, meta.getReadCount(),
+                    m_rowCount, m_metric.getStartTime(), endTime, duration, isUntilNow);
         }
 
         @Override

@@ -690,11 +690,6 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             }
         }
 
-        final boolean isCriticalQuery = rowReadCount > 5000 || filteredRowKeys.size() > 100;
-        query.setQueryUUID(UUID.randomUUID());
-        query.setQueryLoggingType(isCriticalQuery ? "critical" : "simple");
-        query.setLoggable(isCriticalQuery || random.nextInt(100) < m_cassandraConfiguration.getQuerySamplingPercentage());
-
         return rowReadCount;
     }
 
@@ -721,22 +716,14 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             span.setTag("filtered_count", filteredCount);
             span.setTag("max_row_keys", Boolean.TRUE);
         }
-        logQuery(query, readCount, filteredCount, true, limit, index);
-        counter.incrementAndGet();
-    }
-
-    private static void logQuery(DatastoreMetricQuery query,
-                                 int readCount,
-                                 int filteredCount,
-                                 boolean limitExceeded,
-                                 int limit,
-                                 String index) {
         final boolean isUntilNow = System.currentTimeMillis() - query.getEndTime() <= 30_000;
         final long duration = query.getEndTime() - query.getStartTime();
-        logger.warn("{}_query: uuid={} metric={} query={} read={} filtered={} start_time={} end_time={} duration={} " +
-                        "is_until_now={} exceeded={} limit={} index={}", query.getQueryLoggingType(),
-                query.getQueryUUID(), query.getName(), query.getTags(), readCount, filteredCount,
-                query.getStartTime(), query.getEndTime(), duration, isUntilNow, limitExceeded, limit, index);
+        logger.warn("query_limit_violation: metric={} query={} read={} filtered={} start_time={} end_time={} " +
+                        "duration={} is_until_now={} exceeded={} limit={} index={}",
+                query.getName(), query.getTags(), readCount, filteredCount, query.getStartTime(), query.getEndTime(),
+                duration, isUntilNow, true, limit, index);
+
+        counter.incrementAndGet();
     }
 
     private List<String> getIndexTags(String metricName) {
@@ -819,10 +806,13 @@ public class CassandraDatastore implements Datastore, KairosMetricReporter {
             checkFilteredRowsLimit(readCount, rowKeys.size(), filteredLimit, query, index);
         }
 
-        if (query.isLoggable()) {
-            final int readLimit = m_cassandraConfiguration.getMaxRowsForKeysQuery();
-            logQuery(query, rowKeys.size(), readCount, false, readLimit, index);
-        }
+        final boolean isCriticalQuery = readCount > 5000 || rowKeys.size() > 100;
+        query.setMeta(new DatastoreMetricQueryMetadata(
+                isCriticalQuery ? "critical" : "simple",
+                readCount,
+                index,
+                isCriticalQuery || random.nextInt(100) < m_cassandraConfiguration.getQuerySamplingPercentage()
+        ));
 
         return rowKeys;
     }
