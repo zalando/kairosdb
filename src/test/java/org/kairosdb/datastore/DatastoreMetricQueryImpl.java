@@ -18,6 +18,7 @@ package org.kairosdb.datastore;
 
 import com.google.common.collect.SetMultimap;
 import org.kairosdb.core.datastore.DatastoreMetricQuery;
+import org.kairosdb.core.datastore.DatastoreMetricQueryMetadata;
 import org.kairosdb.core.datastore.Order;
 import org.kairosdb.core.datastore.QueryPlugin;
 
@@ -34,10 +35,7 @@ public class DatastoreMetricQueryImpl implements DatastoreMetricQuery
 	private SetMultimap<String, String> m_tags;
 	private long m_startTime;
 	private long m_endTime;
-	private UUID uuid;
-	private String loggingType;
-	private boolean loggable;
-
+	private DatastoreMetricQueryMetadata meta;
 
 	public DatastoreMetricQueryImpl(String name, SetMultimap<String, String> tags,
 			long startTime, long endTime)
@@ -91,31 +89,12 @@ public class DatastoreMetricQueryImpl implements DatastoreMetricQuery
 	}
 
 	@Override
-	public void setQueryUUID(UUID uuid) {
-		this.uuid = uuid;
+	public DatastoreMetricQueryMetadata getMeta() {
+		return meta;
 	}
 
 	@Override
-	public UUID getQueryUUID() {
-		return uuid;
+	public void setMeta(DatastoreMetricQueryMetadata meta) {
+		this.meta = meta;
 	}
-
-	public void setQueryLoggingType(String type) {
-		this.loggingType = type;
-	}
-
-	public String getQueryLoggingType() {
-		return loggingType;
-	}
-
-	@Override
-	public boolean isLoggable() {
-		return loggable;
-	}
-
-	@Override
-	public void setLoggable(boolean loggable) {
-		this.loggable = loggable;
-	}
-
 }

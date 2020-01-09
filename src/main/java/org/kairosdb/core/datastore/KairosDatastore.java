@@ -554,7 +554,7 @@ public class KairosDatastore implements KairosMetricReporter {
 
         private void logQuery() {
             final DatastoreMetricQueryMetadata meta = m_metric.getMeta();
-            if (!meta.getLoggable()) {
+            if (meta == null || !meta.getLoggable()) {
                 return;
             }
 
