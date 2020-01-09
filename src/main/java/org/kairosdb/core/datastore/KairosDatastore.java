@@ -79,6 +79,7 @@ public class KairosDatastore implements KairosMetricReporter {
     @Inject
     private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
 
+    @Inject
     private CacheFilesMetricsProvider cacheFilesMetricsProvider;
 
     @Inject
@@ -108,11 +109,6 @@ public class KairosDatastore implements KairosMetricReporter {
             m_baseCacheDir = cacheTempDir;
             setupCacheDirectory();
         }
-    }
-
-    @Inject(optional = true)
-    public void setCacheFilesMetricsProvider(CacheFilesMetricsProvider cacheFilesMetricsProvider) {
-        this.cacheFilesMetricsProvider = cacheFilesMetricsProvider;
     }
 
     private void setupCacheDirectory() {
@@ -460,9 +456,13 @@ public class KairosDatastore implements KairosMetricReporter {
                                 tempFile, m_metric.getCacheTime(), m_dataPointFactory);
                         if (cachedResults != null) {
                             returnedRows = cachedResults.getRows();
-                            if (cacheFilesMetricsProvider != null) {
-                                cachedResults.cacheCreatedAt().ifPresent(cacheFilesMetricsProvider::measureSpan);
-                            }
+                            cachedResults.cacheCreatedAt().ifPresent(fileCreateAt -> {
+                                logger.warn(
+                                        "Cache file was created {} seconds ago",
+                                        (System.currentTimeMillis() - fileCreateAt) / 1000
+                                );
+                                cacheFilesMetricsProvider.measureSpan(fileCreateAt);
+                            });
                             span.setTag("cached", true);
                             m_readCacheHit.incrementAndGet();
                         }
