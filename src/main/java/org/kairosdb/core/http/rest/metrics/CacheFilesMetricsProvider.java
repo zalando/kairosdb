@@ -24,8 +24,8 @@ public class CacheFilesMetricsProvider implements InternalMetricsProvider {
 
     public void measureSpan(long fileCreateAt) {
         final long timeInMillis = System.currentTimeMillis() - fileCreateAt;
-        final long timeInMinutes = timeInMillis / 1000 / 60;
-        fileLifespanHistogram.update(timeInMinutes);
+        final long timeInSeconds = timeInMillis / 1000;
+        fileLifespanHistogram.update(timeInSeconds);
     }
 
     @Override
