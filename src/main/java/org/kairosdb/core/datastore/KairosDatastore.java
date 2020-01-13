@@ -456,13 +456,7 @@ public class KairosDatastore implements KairosMetricReporter {
                                 tempFile, m_metric.getCacheTime(), m_dataPointFactory);
                         if (cachedResults != null) {
                             returnedRows = cachedResults.getRows();
-                            cachedResults.cacheCreatedAt().ifPresent(fileCreateAt -> {
-                                logger.warn(
-                                        "Cache file was created {} seconds ago",
-                                        (System.currentTimeMillis() - fileCreateAt) / 1000
-                                );
-                                cacheFilesMetricsProvider.measureSpan(fileCreateAt);
-                            });
+                            cachedResults.cacheCreatedAt().ifPresent(cacheFilesMetricsProvider::measureSpan);
                             span.setTag("cached", true);
                             m_readCacheHit.incrementAndGet();
                         }
