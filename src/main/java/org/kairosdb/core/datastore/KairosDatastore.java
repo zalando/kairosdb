@@ -35,6 +35,7 @@ import org.kairosdb.core.datapoints.LongDataPointFactory;
 import org.kairosdb.core.datapoints.LongDataPointFactoryImpl;
 import org.kairosdb.core.exception.DatastoreException;
 import org.kairosdb.core.groupby.*;
+import org.kairosdb.core.http.rest.metrics.CacheFilesMetricsProvider;
 import org.kairosdb.core.reporting.KairosMetricReporter;
 import org.kairosdb.datastore.cassandra.MaxRowKeysForQueryExceededException;
 import org.kairosdb.util.MemoryMonitor;
@@ -77,6 +78,9 @@ public class KairosDatastore implements KairosMetricReporter {
 
     @Inject
     private LongDataPointFactory m_longDataPointFactory = new LongDataPointFactoryImpl();
+
+    @Inject
+    private CacheFilesMetricsProvider cacheFilesMetricsProvider;
 
     @Inject
     @Named("HOSTNAME")
@@ -452,6 +456,7 @@ public class KairosDatastore implements KairosMetricReporter {
                                 tempFile, m_metric.getCacheTime(), m_dataPointFactory);
                         if (cachedResults != null) {
                             returnedRows = cachedResults.getRows();
+                            cachedResults.cacheCreatedAt().ifPresent(cacheFilesMetricsProvider::measureSpan);
                             span.setTag("cached", true);
                             m_readCacheHit.incrementAndGet();
                         }

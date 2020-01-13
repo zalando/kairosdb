@@ -248,6 +248,10 @@ public class CachedSearchResult implements QueryCallback {
         return (ret);
     }
 
+    Optional<Long> cacheCreatedAt() {
+        return Optional.ofNullable(m_dataFile).map(File::lastModified);
+    }
+
     //===========================================================================
     private class FilePositionMarker implements Iterable<DataPoint>, Externalizable {
         private long m_startPosition;
