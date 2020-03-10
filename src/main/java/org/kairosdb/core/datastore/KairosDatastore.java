@@ -547,9 +547,9 @@ public class KairosDatastore implements KairosMetricReporter {
             final long duration = endTime - m_metric.getStartTime();
             final boolean isUntilNow = System.currentTimeMillis() - endTime <= 30_000;
             logger.info("query_finished: type={} metric={} query={} datapoint_count={} rows_read={} " +
-                            "rows_filtered={} start_time={} end_time={} duration={} is_until_now={}",
+                            "rows_filtered={} start_time={} end_time={} duration={} is_until_now={} index={}",
                     meta.getQueryType(), m_metric.getName(), m_metric.getTags(), m_dataPointCount, meta.getReadCount(),
-                    m_rowCount, m_metric.getStartTime(), endTime, duration, isUntilNow);
+                    m_rowCount, m_metric.getStartTime(), endTime, duration, isUntilNow, meta.getIndexUsed());
         }
 
         @Override
